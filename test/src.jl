@@ -51,4 +51,9 @@
     @test length(mt.nodes) == length(alloffspring(mt.root)) + 1 
     @test length(mt.leaves) == sum(ckt .!= 0)
     @test score(mt) == sum(Lt) && complexity(mt) == sum(as .!= 0)
+
+    # We know there exists a perfect classifier, so let's test apply
+    # @test all(apply(mt, X) .== Y)
+    # For some reason, optimal trees don't seem to be optimal...
+    # FIgure out why I'm getting non-zero 
 # end
