@@ -1,9 +1,10 @@
 """ Tests MIO-based tree learning. """
-# function test_training()
+function test_training()
     path = "data/iris.data"
     csv_data = CSV.File(path, header=false)
     iris_names = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-    df = DataFrame(csv_data.columns, Symbol.(iris_names))
+    df = DataFrame(csv_data)
+    rename!(df, iris_names)
     dropmissing!(df)
 
     # Checking BinaryNode
@@ -56,4 +57,6 @@
     # @test all(apply(mt, X) .== Y)
     # For some reason, optimal trees don't seem to be optimal...
     # FIgure out why I'm getting non-zero 
-# end
+end
+
+test_training()
