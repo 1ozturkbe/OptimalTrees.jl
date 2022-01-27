@@ -1,3 +1,5 @@
+using Pkg
+Pkg.activate("test")
 
 using DataFrames
 using JuMP

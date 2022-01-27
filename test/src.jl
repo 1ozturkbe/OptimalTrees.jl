@@ -1,5 +1,5 @@
 """ Tests MIO-based tree learning. """
-function test_training()
+# function test_training()
     path = "data/iris.data"
     csv_data = CSV.File(path, header=false)
     iris_names = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
@@ -57,6 +57,21 @@ function test_training()
     # @test all(apply(mt, X) .== Y)
     # For some reason, optimal trees don't seem to be optimal...
     # FIgure out why I'm getting non-zero 
-end
+# end
 
-test_training()
+# test_training()
+
+""" Adds one layer of depth to MIOTree."""
+function add_depth(mt::MIOTree)
+    max_idx = maximum([nd.idx for nd in mt.nodes])
+    all_idxs = max_idx .+ collect(1:2*length(mt.leaves))
+    new_leaves = BinaryNode[]
+    for leaf in mt.leaves
+        leftchild(leaf, BinaryNode(popfirst!(all_idxs)))
+        push!(new_leaves, leaf.left)        
+        rightchild(leaf, BinaryNode(popfirst!(all_idxs)))
+        push!(new_leaves, leaf.right)
+    end
+    mt.leaves = new_leaves
+    return
+end

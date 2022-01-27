@@ -134,27 +134,26 @@ function populate_nodes!(mt::MIOTree)
     queue = BinaryNode[mt.root]
     leaves = BinaryNode[]
     m = mt.model
-    as = getvalue.(m[:a])
-    bs = getvalue.(m[:b])
-    ckt = getvalue.(m[:ckt]) # Finding labels
     while !isempty(queue) # First populate the a,b hyperplane values
         nd = pop!(queue)
         if !is_leaf(nd)
-            if sum(isapprox.(as[nd.idx, :], zeros(size(as, 2)); atol = 1e-8)) != size(as, 2)
-                nd.a = as[nd.idx, :]
-                nd.b = bs[nd.idx]
+            aval = getvalue.(m[:a][nd.idx, :])
+            if sum(isapprox.(aval, zeros(length(aval)); atol = 1e-8)) != length(aval)
+                nd.a = aval
+                nd.b = getvalue.(m[:b][nd.idx])
                 for child in children(nd)
                     push!(queue, child)
                 end
             end
         end
     end
-    for i = 1:length(mt.leaves) # Then populate the class values...
-        class_values = findall(ckt[:, i] .== 1)
-        if length(class_values) == 1
-            mt.leaves[i].label = mt.classes[class_values[1]]
-        elseif length(class_values) > 1
-            throw(ErrorException("Multiple classes assigned to node $(mt.leaves[i].idx)."))
+    for lf in mt.leaves # Then populate the class values...
+        class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-8) for i = 1:length(mt.classes)]
+        if sum(class_values) == 1
+            lf.label = mt.classes[findall(class_values)[1]]
+        elseif sum(class_values) > 1
+            println(class_values)
+            throw(ErrorException("Multiple classes assigned to node $(lf.idx)."))
         end
     end
     return
