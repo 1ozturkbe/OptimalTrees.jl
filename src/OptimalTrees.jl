@@ -1,4 +1,5 @@
 module OptimalTrees
+    using CPLEX
     using DataFrames
     using JuMP
     using MathOptInterface
@@ -12,6 +13,7 @@ module OptimalTrees
     include("tree.jl")
     include("training.jl")
 
+    const CPLEX_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
 
@@ -24,7 +26,7 @@ module OptimalTrees
         generate_binary_tree, MIOTree_defaults, MIOTree, build_MIOTree,
         generate_tree_model, delete_children!, prune!, 
         populate_nodes!,
-        apply, score, complexity,
+        apply, predict, score, complexity,
         is_leaf, get_classification_label, 
         get_split_weights, get_split_threshold,
 

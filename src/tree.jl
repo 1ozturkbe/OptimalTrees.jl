@@ -18,7 +18,7 @@ end
 """ 
     generate_binary_tree(root::BinaryNode, max_depth::Int)
 
-Returns all nodes and leaves of a binary tree.
+Returns all nodes and leaves of a dense binary tree.
 """
 function generate_binary_tree(root::BinaryNode, max_depth::Int)
     levs = Dict{Int64, Array{BinaryNode}}(0 => [root])
@@ -85,9 +85,28 @@ function set_param(mt::MIOTree, sym::Symbol, val::Any)
 end
 
 
-""" Applies a MIOTree to given data. """
+"""Returns the leaves in which the data X fall. """
 function apply(mt::MIOTree, X::Matrix)
-    vals = [] # TODO: initialize empty array instead, based on types of labes in MIOTree. 
+    vals = [] # TODO: initialize empty array instead, based on types of indices in MIOTree. 
+    for i = 1:size(X, 1)
+        row = X[i,:]
+        nd = mt.root
+        while !is_leaf(nd)
+            lhs = sum(nd.a .* row)
+            if lhs ≤ nd.b
+                nd = nd.left
+            else
+                nd = nd.right
+            end
+        end
+        push!(vals, nd.idx)
+    end
+    return vals
+end
+
+""" Makes predictions using a tree, based on data X. """
+function predict(mt::MIOTree, X::Matrix)
+    vals = [] # TODO: initialize empty array instead, based on types of labels in MIOTree. 
     for i = 1:size(X, 1)
         row = X[i,:]
         nd = mt.root
@@ -132,7 +151,6 @@ function populate_nodes!(mt::MIOTree)
     termination_status(mt.model) == MOI.OPTIMAL || 
         throw(ErrorException("MIOTree must be trained before it can be pruned."))
     queue = BinaryNode[mt.root]
-    leaves = BinaryNode[]
     m = mt.model
     while !isempty(queue) # First populate the a,b hyperplane values
         nd = pop!(queue)
@@ -152,7 +170,6 @@ function populate_nodes!(mt::MIOTree)
         if sum(class_values) == 1
             lf.label = mt.classes[findall(class_values)[1]]
         elseif sum(class_values) > 1
-            println(class_values)
             throw(ErrorException("Multiple classes assigned to node $(lf.idx)."))
         end
     end
