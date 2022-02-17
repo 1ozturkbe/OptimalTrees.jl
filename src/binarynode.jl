@@ -106,6 +106,8 @@ function set_split_values!(bn::BinaryNode, a, b)
     is_leaf(bn) && throw(ErrorException("Cannot set split values for leaf node $(bn.idx)."))
     bn.a = a
     bn.b = b
+    bn.label = nothing
+    return
 end
 
 """ 
@@ -137,4 +139,7 @@ function set_classification_label!(bn::BinaryNode, label)
     is_leaf(bn) || throw(ErrorException("Cannot set the classification label of node $(bn.idx), " * 
     "since it is not a leaf node."))
     bn.label = label
+    bn.a = nothing
+    bn.b = nothing
+    return
 end
