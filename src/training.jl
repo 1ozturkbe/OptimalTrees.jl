@@ -109,3 +109,46 @@ function generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
     @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * sum(s[:,:]))
     return
 end
+
+# """ 
+#     svm(X::DataFrame, Y::Array, threshold = 0; solver = CPLEX_SILENT)
+
+# Finds the unregularized SVM split, where threshold is the allowable error. 
+# """
+# function svm(X::Matrix, Y::Array, threshold = 0; solver = CPLEX_SILENT)
+#     m = JuMP.Model(with_optimizer(solver))
+#     @variable(m, error[1:length(Y)] >= 0)
+#     @variable(m, β[1:size(X, 2)])
+#     @variable(m, β0)
+#     for i=1:length(Y)
+#         @constraint(m, threshold + error[i] >= Y[i] - β0 - sum(X[i,:] .* β))
+#         @constraint(m, threshold + error[i] >= -Y[i] + β0 + sum(X[i,:] .* β))
+#     end
+#     @objective(m, Min, sum(error))
+#     optimize!(m)
+#     return getvalue(β0), getvalue.(β)
+# end
+
+""" 
+    SVM(X::Matrix, Y::Array, solver, C = 0.01)
+
+Optimizes an SVM, where C is the regularization factor. 
+"""
+function SVM(X::Matrix, Y::Array, solver, C = 0.01)
+    n_samples, n_vars = size(X)
+    classes = sort(unique(Y)) # The potential classes are sorted. 
+    k = length(classes)
+    k == 2 || throw(ErrorException("Detected $(k) classes for the SVM." * 
+        " Only two classes allowed."))
+    Y_san = ones(n_samples) # TODO: maybe don't generate -1/1 data every time? 
+    Y_san[findall(Y .== classes[1])] .= -1
+    m = JuMP.Model(solver)
+    @variable(m, a[1:n_vars])
+    @variable(m, b)
+    @variable(m, ζ[1:n_samples] ≥ 0) # variable allocation 
+    @constraint(m, [i = 1:n_samples], Y_san[i] * (sum(a.*X[i, :]) - b) ≥ 1 - ζ[i])
+    C = 100
+    @objective(m, Min, 0.5*C*sum(a.^2) + sum(ζ))
+    optimize!(m)
+    return getvalue.(a), getvalue(b)
+end 

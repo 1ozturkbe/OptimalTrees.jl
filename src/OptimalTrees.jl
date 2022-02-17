@@ -32,6 +32,9 @@ module OptimalTrees
         set_classification_label!, 
         get_split_values, set_split_values!,
 
+    # Tree training
+        SVM,
+
     # Helper functions
         set_param, get_param
 end
