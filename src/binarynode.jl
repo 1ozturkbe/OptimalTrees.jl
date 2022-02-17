@@ -92,17 +92,20 @@ end
 printnode(io::IO, node::BinaryNode) = print(io, node.idx)
 
 """ 
-Returns a-coefficients of hyperplane split on BinaryNode. 
+Returns a-coefficients and b-value of the split on BinaryNode. 
 """
-function get_split_weights(bn::BinaryNode)
-    return bn.a
+function get_split_values(bn::BinaryNode)
+    is_leaf(bn) && throw(ErrorException("Cannot get split values of leaf node $(bn.idx)."))
+    return bn.a, bn.b
 end
 
 """ 
-Returns b-value of hyperplane split on BinaryNode. 
+Sets a-coefficients and b-value of a split on BinaryNode. 
 """
-function get_split_threshold(bn::BinaryNode)
-    return bn.b
+function set_split_values!(bn::BinaryNode, a, b)
+    is_leaf(bn) && throw(ErrorException("Cannot set split values for leaf node $(bn.idx)."))
+    bn.a = a
+    bn.b = b
 end
 
 """ 
@@ -123,4 +126,15 @@ function get_classification_label(bn::BinaryNode)
     is_leaf(bn) || throw(ErrorException("Cannot get the classification label of node $(bn.idx), " * 
                         "since it is not a leaf node."))
     return bn.label
+end
+
+"""
+    set_classification_label!(bn::BinaryNode)
+
+Sets the classification label of a leaf BinaryNode. 
+"""
+function set_classification_label!(bn::BinaryNode, label)
+    is_leaf(bn) || throw(ErrorException("Cannot set the classification label of node $(bn.idx), " * 
+    "since it is not a leaf node."))
+    bn.label = label
 end

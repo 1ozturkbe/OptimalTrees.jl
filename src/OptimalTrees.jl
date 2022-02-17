@@ -27,8 +27,10 @@ module OptimalTrees
         generate_tree_model, delete_children!, prune!, 
         populate_nodes!,
         apply, predict, score, complexity,
-        is_leaf, get_classification_label, 
-        get_split_weights, get_split_threshold,
+        is_leaf,
+        get_classification_label, 
+        set_classification_label!, 
+        get_split_values, set_split_values!,
 
     # Helper functions
         set_param, get_param
