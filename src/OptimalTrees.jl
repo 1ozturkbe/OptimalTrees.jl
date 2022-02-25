@@ -1,6 +1,7 @@
 module OptimalTrees
     using CPLEX
     using DataFrames
+    using DocStringExtensions
     using JuMP
     using MathOptInterface
     using Missings
@@ -13,6 +14,7 @@ module OptimalTrees
     include("tree.jl")
     include("training.jl")
 
+    const MOI = MathOptInterface
     const CPLEX_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
@@ -26,7 +28,7 @@ module OptimalTrees
         generate_binary_tree, MIOTree_defaults, MIOTree, build_MIOTree,
         generate_tree_model, delete_children!, prune!, 
         populate_nodes!,
-        apply, predict, score, complexity,
+        apply, predict,
         is_leaf,
         get_classification_label, 
         set_classification_label!, 
@@ -34,6 +36,9 @@ module OptimalTrees
 
     # Tree training
         SVM,
+
+    # Scoring functions
+        accuracy, complexity,
 
     # Helper functions
         set_param, get_param

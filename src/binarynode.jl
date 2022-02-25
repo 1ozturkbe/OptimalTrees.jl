@@ -13,14 +13,18 @@ BinaryNode(idx, parent::BinaryNode) = BinaryNode{typeof(idx)}(idx = idx, parent 
 
 function Base.show(io::IO, bn::BinaryNode)
     if is_leaf(bn)
-        println("Leaf BinaryNode $(bn.idx) with label $(string(bn.label)).")
+        print("Leaf BinaryNode $(bn.idx) with label $(string(bn.label)).")
     else
-        println("Branching BinaryNode $(bn.idx).")
+        print("Branching BinaryNode $(bn.idx).")
     end
     return
 end
 
-""" Adds a left (less-than) child to BinaryNode. """
+""" 
+    $(TYPEDSIGNATURES)
+
+Adds a left (less-than) child to BinaryNode. 
+"""
 function leftchild(parent::BinaryNode, child::BinaryNode)
     isnothing(parent.left) || error("Left child of node $(parent.idx) is already assigned.")
     isnothing(child.parent) || error("Parent of node $(child.idx) is already assigned.")
@@ -29,7 +33,11 @@ function leftchild(parent::BinaryNode, child::BinaryNode)
     return
 end
 
-""" Adds a right (greater-than) child to BinaryNode. """
+""" 
+    $(TYPEDSIGNATURES)
+
+Adds a right (greater-than) child to BinaryNode. 
+"""
 function rightchild(parent::BinaryNode, child::BinaryNode)
     isnothing(parent.right) || error("Right child of node $(parent.idx) is already assigned.")
     isnothing(child.parent) || error("Parent of node $(child.idx) is already assigned.")

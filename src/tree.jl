@@ -128,21 +128,37 @@ apply(mt::MIOTree, X::DataFrame) = apply(mt, Matrix(X))
 # TODO: improve this by making sure that the DataFrame labels are in the right order. 
 
 """ 
+    $(TYPEDSIGNATURES)
+
 Returns the misclassification error of the MIOTree.
 """
-function score(mt::MIOTree)
-    return sum(JuMP.getvalue.(mt.model[:Lt]))/size(mt.model[:z],1)
+function accuracy(mt::MIOTree)
+    if JuMP.termination_status(mt.model) == MOI.OPTIMIZE_NOT_CALLED
+        throw(ErrorException("`score` must be called with X, Y data if the MIOTree has not been optimized."))
+    else
+        return sum(JuMP.getvalue.(mt.model[:Lt]))/size(mt.model[:z],1)
+    end
 end
 
 """
+    $(TYPEDSIGNATURES)
+
 Returns the number of nonzero hyperplane coefficients of the MIOTree. 
 """
 function complexity(mt::MIOTree)
-    return sum(JuMP.getvalue.(mt.model[:s]))
+    allnodes = [mt.root, alloffspring(mt.root)...]
+    scor = 0
+    for node in allnodes
+        if !is_leaf(node)
+            nonzeros = count(node.a .!= 0)
+            scor += nonzeros
+        end
+    end
+    return scor
 end
 
 """
-    populate_nodes!(mt::MIOTree)
+    $(TYPEDSIGNATURES)
 
 Populates the nodes of the MIOTree using 
 optimal solution of the MIO problem. 
