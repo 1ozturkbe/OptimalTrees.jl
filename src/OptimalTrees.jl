@@ -15,7 +15,7 @@ module OptimalTrees
     include("training.jl")
 
     const MOI = MathOptInterface
-    const CPLEX_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
+    const SOLVER_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
 
@@ -26,7 +26,7 @@ module OptimalTrees
         leftchild, rightchild, children, 
         alloffspring, printnode,
         generate_binary_tree, MIOTree_defaults, MIOTree,
-        generate_MIO_model, delete_children!, prune!, 
+        generate_MIO_model, delete_children!, prune!, chop_down!,
         populate_nodes!,
         apply, predict,
         is_leaf,

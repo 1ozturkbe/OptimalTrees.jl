@@ -13,4 +13,4 @@ Random.seed!(1);
 include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees
-CPLEX_SILENT = OptimalTrees.CPLEX_SILENT
+SOLVER_SILENT = OptimalTrees.SOLVER_SILENT

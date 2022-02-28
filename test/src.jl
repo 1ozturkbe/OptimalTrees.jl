@@ -46,7 +46,7 @@ function test_MIOTree()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
-    mt = MIOTree(CPLEX_SILENT; max_depth = 2, minbucket = 0.03)
+    mt = MIOTree(SOLVER_SILENT; max_depth = 2, minbucket = 0.03)
     set_param(mt, :max_depth, 4)
     df = load_irisdata()
     X = Matrix(df[:,1:4])
@@ -61,7 +61,7 @@ end
 
 """ Tests full MIO-based tree learning. """
 function test_MIOtraining(df = load_irisdata())
-    mt = MIOTree(CPLEX_SILENT)
+    mt = MIOTree(SOLVER_SILENT)
     df = binarize(load_irisdata())
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
@@ -70,7 +70,7 @@ function test_MIOtraining(df = load_irisdata())
     set_param(mt, :minbucket, 0.001)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
-    set_optimizer(mt, CPLEX_SILENT)
+    set_optimizer(mt, SOLVER_SILENT)
     optimize!(mt)
     # # Practicing pruning the tree
     m = mt.model
@@ -88,7 +88,7 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     n_samples, n_vars = size(X)
     classes = sort(unique(Y))
     length(classes) == 2 || throw(ErrorException("Hyperplane CART can only be applied to binary classification problems. "))
-    isempty(alloffspring(mt.root)) || throw(ErrorException("Hyperplane CART can only be applied to previously unbuilt trees. "))
+    isempty(alloffspring(mt.root)) || throw(ErrorException("Hyperplane CART can only be applied to ungrown trees. "))
     minpoints = ceil(n_samples * get_param(mt, :minbucket))
     counts = Dict((i => count(==(i), Y)) for i in unique(Y))
     maxval = 0
@@ -106,7 +106,7 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         leaf = popfirst!(valid_leaves)
         @info "Trying $(leaf.idx)..."
         leaf.a, leaf.b = SVM(X[point_idxs[leaf.idx], :],
-                            Y[point_idxs[leaf.idx]], CPLEX_SILENT)
+                            Y[point_idxs[leaf.idx]], SOLVER_SILENT)
 
         # Checking left child, and adding to valid_leaves if necessary
         ct += 1
@@ -176,3 +176,5 @@ test_binarynode()
 test_MIOTree()
 
 test_MIOtraining()
+
+test_hyperplanecart()

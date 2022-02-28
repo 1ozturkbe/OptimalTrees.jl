@@ -113,11 +113,11 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
 end
 
 # """ 
-#     svm(X::DataFrame, Y::Array, threshold = 0; solver = CPLEX_SILENT)
+#     svm(X::DataFrame, Y::Array, threshold = 0; solver = SOLVER_SILENT)
 
 # Finds the unregularized SVM split, where threshold is the allowable error. 
 # """
-# function svm(X::Matrix, Y::Array, threshold = 0; solver = CPLEX_SILENT)
+# function svm(X::Matrix, Y::Array, threshold = 0; solver = SOLVER_SILENT)
 #     m = JuMP.Model(with_optimizer(solver))
 #     @variable(m, error[1:length(Y)] >= 0)
 #     @variable(m, β[1:size(X, 2)])

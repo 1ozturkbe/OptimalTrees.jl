@@ -212,8 +212,11 @@ function prune!(mt::MIOTree)
     return
 end
 
+""" Prunes the MIOTree from the root down, so that its offspring are garbage-collected. """
+chop_down!(mt::MIOTree) = delete_children!(mt.root) # TODO: check garbage collection. 
+
 function generate_binary_tree(mt::MIOTree)
-    isempty(alloffspring(mt.root)) || throw(ErrorException("The MIOTree must be unbuilt to generate a dense binary tree. "))
+    isempty(alloffspring(mt.root)) || throw(ErrorException("The MIOTree must be ungrown/chopped down to generate a dense binary tree. "))
     generate_binary_tree(mt.root, get_param(mt, :max_depth))
     return
 end
