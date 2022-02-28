@@ -35,7 +35,6 @@ function test_MIOTree()
     set_optimizer(mt, SOLVER_SILENT)
     optimize!(mt)
 
-    # Practicing pruning the tree
     m = mt.model
     as = getvalue.(m[:a])
     d = getvalue.(m[:d])
@@ -44,8 +43,10 @@ function test_MIOTree()
     Nkt = getvalue.(m[:Nkt])
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
+    @test sum(!isnothing(node.a) for node in allnodes(mt)) == sum(sum(as[i,:]) != 0 for i = 1:2^md-1)
     prune!(mt)
-    @test length(allleaves(mt)) == sum(ckt .!= 0)
+    @test length(allleaves(mt)) == sum(ckt .!= 0) == sum(Nkt .!= 0)
+    @test sum(Nkt .!= 0) == count(!isnothing(node.label) for node in allnodes(mt))
     @test score(mt, X, Y) == sum(Lt) && complexity(mt) == sum(as .!= 0)
 end
 

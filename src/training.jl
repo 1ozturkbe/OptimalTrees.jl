@@ -180,7 +180,7 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     while !isempty(valid_leaves)
         leaf = popfirst!(valid_leaves)
         leaf.a, leaf.b = SVM(X[point_idxs[leaf.idx], :],
-                            Y[point_idxs[leaf.idx]], solver)
+                            Y[point_idxs[leaf.idx]], mt.solver)
 
         # Checking left child, and adding to valid_leaves if necessary
         ct += 1

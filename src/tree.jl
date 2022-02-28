@@ -45,12 +45,15 @@ mutable struct MIOTree
     root::BinaryNode
     params::Dict
     classes::Union{Nothing, Array{Any}}
+    solver
+    
     function MIOTree(solver; kwargs...)
         root = BinaryNode(1)
         mt = new(JuMP.Model(solver),
                  root,
                  MIOTree_defaults(),
-                 nothing)
+                 nothing,
+                 solver)
         for (key, val) in kwargs
             if key in keys(mt.params)
                 set_param(mt, key, val)
@@ -156,18 +159,13 @@ Populates the nodes of the MIOTree using optimal solution of the MIO problem.
 function populate_nodes!(mt::MIOTree)
     termination_status(mt.model) == MOI.OPTIMAL || 
         throw(ErrorException("MIOTree must be trained before it can be pruned."))
-    queue = BinaryNode[mt.root]
     m = mt.model
-    while !isempty(queue) # First populate the a,b hyperplane values
-        nd = pop!(queue)
+    for nd in allnodes(mt)
         if !is_leaf(nd)
             aval = getvalue.(m[:a][nd.idx, :])
             if sum(isapprox.(aval, zeros(length(aval)); atol = 1e-10)) != length(aval)
                 nd.a = aval
                 nd.b = getvalue.(m[:b][nd.idx])
-                for child in children(nd)
-                    push!(queue, child)
-                end
             end
         end
     end
@@ -191,24 +189,23 @@ how to populate nodes using optimal solution data.
 """
 function prune!(mt::MIOTree)
     queue = BinaryNode[mt.root]
-    nd = mt.root
     while !isempty(queue)
-        global nd = popfirst!(queue)
+        println("Queue length: " * string(length(queue)))
+        nd = popfirst!(queue)
         if !isnothing(nd.a) && any(nd.a != 0)
-            for child in children(nd)
-                push!(queue, child)
-            end
+            append!(queue, children(nd))
         else
-            alloffspr = alloffspring(nd)
+            println("Enter loop with node $(nd.idx).")
             if isnothing(nd.label)
+                alloffspr = alloffspring(nd)
                 alllabels = [nextnode.label for nextnode in alloffspr if !isnothing(nextnode.label)]
-                if length(alllabels) == 1 
+                # if length(alllabels) == 1 
                     nd.label = alllabels[1]
-                elseif length(alllabels) > 1
-                    throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
-                else
-                    throw(ErrorException("Missing labels below node $(nd.idx)! Bug!"))
-                end
+                # elseif length(alllabels) > 1
+                #     throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
+                # else
+                #     throw(ErrorException("Missing labels below node $(nd.idx)! Bug!"))
+                # end
             end
             delete_children!(nd)
         end
