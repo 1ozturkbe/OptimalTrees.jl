@@ -162,7 +162,7 @@ function populate_nodes!(mt::MIOTree)
         nd = pop!(queue)
         if !is_leaf(nd)
             aval = getvalue.(m[:a][nd.idx, :])
-            if sum(isapprox.(aval, zeros(length(aval)); atol = 1e-8)) != length(aval)
+            if sum(isapprox.(aval, zeros(length(aval)); atol = 1e-10)) != length(aval)
                 nd.a = aval
                 nd.b = getvalue.(m[:b][nd.idx])
                 for child in children(nd)
@@ -191,8 +191,9 @@ how to populate nodes using optimal solution data.
 """
 function prune!(mt::MIOTree)
     queue = BinaryNode[mt.root]
+    nd = mt.root
     while !isempty(queue)
-        nd = pop!(queue)
+        global nd = popfirst!(queue)
         if !isnothing(nd.a) && any(nd.a != 0)
             for child in children(nd)
                 push!(queue, child)

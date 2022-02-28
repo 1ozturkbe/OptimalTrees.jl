@@ -1,5 +1,4 @@
 module OptimalTrees
-    using CPLEX
     using DataFrames
     using DocStringExtensions
     using JuMP
@@ -15,7 +14,6 @@ module OptimalTrees
     include("training.jl")
 
     const MOI = MathOptInterface
-    const SOLVER_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
 

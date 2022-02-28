@@ -67,7 +67,7 @@ function alloffspring(nd::BinaryNode)
     offspr = [child for child in children(nd)]
     queue = [child for child in children(nd)]
     while !isempty(queue)
-        nextnode = pop!(queue)
+        nextnode = popfirst!(queue)
         if !is_leaf(nextnode)
             for child in children(nextnode)
                 push!(offspr, child)

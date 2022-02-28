@@ -27,7 +27,7 @@ function test_MIOTree()
     Y =  Array(df[:, "class"])
     md = 3
     set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.05)
+    set_param(mt, :minbucket, 0.01)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
     @test length(allleaves(mt)) == 2^md
@@ -41,7 +41,9 @@ function test_MIOTree()
     d = getvalue.(m[:d])
     Lt = getvalue.(m[:Lt])
     ckt = getvalue.(m[:ckt])
+    Nkt = getvalue.(m[:Nkt])
     populate_nodes!(mt)
+    @test length(allleaves(mt)) == 2^md
     prune!(mt)
     @test length(allleaves(mt)) == sum(ckt .!= 0)
     @test score(mt, X, Y) == sum(Lt) && complexity(mt) == sum(as .!= 0)

@@ -112,12 +112,12 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
 end
 
 # """ 
-#     svm(X::DataFrame, Y::Array, threshold = 0; solver = SOLVER_SILENT)
+#     svm(X::DataFrame, Y::Array, solver, threshold = 0)
 
 # Finds the unregularized SVM split, where threshold is the allowable error. 
 # """
-# function svm(X::Matrix, Y::Array, threshold = 0; solver = SOLVER_SILENT)
-#     m = JuMP.Model(with_optimizer(solver))
+# function svm(X::Matrix, Y::Array, solver, threshold = 0)
+#     m = JuMP.Model(solver)
 #     @variable(m, error[1:length(Y)] >= 0)
 #     @variable(m, β[1:size(X, 2)])
 #     @variable(m, β0)
@@ -180,7 +180,7 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     while !isempty(valid_leaves)
         leaf = popfirst!(valid_leaves)
         leaf.a, leaf.b = SVM(X[point_idxs[leaf.idx], :],
-                            Y[point_idxs[leaf.idx]], SOLVER_SILENT)
+                            Y[point_idxs[leaf.idx]], solver)
 
         # Checking left child, and adding to valid_leaves if necessary
         ct += 1
