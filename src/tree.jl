@@ -203,7 +203,6 @@ function prune!(mt::MIOTree)
                 alllabels = [nextnode.label for nextnode in alloffspr if !isnothing(nextnode.label)]
                 if length(alllabels) == 1 
                     nd.label = alllabels[1]
-
                 elseif length(alllabels) > 1
                     throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
                 else

@@ -14,3 +14,5 @@ include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees
 SOLVER_SILENT = OptimalTrees.SOLVER_SILENT
+
+include("utilities.jl")
