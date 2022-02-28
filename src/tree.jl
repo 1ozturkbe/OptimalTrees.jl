@@ -117,14 +117,19 @@ apply(mt::MIOTree, X::DataFrame) = apply(mt, Matrix(X))
 """ 
     $(TYPEDSIGNATURES)
 
-Returns the misclassification error of the MIOTree.
+Returns the prediction accuracy of MIOTree. 
 """
-function accuracy(mt::MIOTree)
+function score(mt::MIOTree)
     if JuMP.termination_status(mt.model) == MOI.OPTIMIZE_NOT_CALLED
         throw(ErrorException("`score` must be called with X, Y data if the MIOTree has not been optimized."))
     else
         return sum(JuMP.getvalue.(mt.model[:Lt]))/size(mt.model[:z],1)
     end
+end
+
+function score(mt::MIOTree, X, Y)
+    preds = predict(mt, X)
+    return sum(preds .== Y)/length(Y)
 end
 
 """

@@ -154,3 +154,94 @@ function SVM(X::Matrix, Y::Array, solver, C = 0.01)
     optimize!(m)
     return getvalue.(a), getvalue(b)
 end 
+
+"""
+    $(TYPEDSIGNATURES)
+
+Performs greedy tree training with hyperplanes for binary classification.
+"""
+function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
+    n_samples, n_vars = size(X)
+    classes = sort(unique(Y))
+    length(classes) == 2 || throw(ErrorException("Hyperplane CART can only be applied to binary classification problems. "))
+    isempty(alloffspring(mt.root)) || throw(ErrorException("Hyperplane CART can only be applied to ungrown trees. "))
+    minpoints = ceil(n_samples * get_param(mt, :minbucket))
+    counts = Dict((i => count(==(i), Y)) for i in unique(Y))
+    maxval = 0
+    maxkey = ""
+    for (key, val) in counts
+        if val ≥ maxval
+            maxval = val
+            maxkey = key
+        end
+    end
+    valid_leaves = [mt.root] # Stores leaves ready for SVM cuts. 
+    ct = 1
+    point_idxs = Dict(mt.root.idx => collect(1:n_samples))
+    while !isempty(valid_leaves)
+        leaf = popfirst!(valid_leaves)
+        leaf.a, leaf.b = SVM(X[point_idxs[leaf.idx], :],
+                            Y[point_idxs[leaf.idx]], SOLVER_SILENT)
+
+        # Checking left child, and adding to valid_leaves if necessary
+        ct += 1
+        leftchild(leaf, BinaryNode(ct))
+        left_idxs = findall(x -> x <= 0, 
+            [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
+        point_idxs[leaf.left.idx] = point_idxs[leaf.idx][left_idxs]
+        n_pos_left = count(Y[left_idxs].== classes[2])
+        n_neg_left = count(Y[left_idxs] .== classes[1])
+
+        # Checking right child, and adding to valid leaves if necessary
+        ct += 1
+        rightchild(leaf, BinaryNode(ct))
+        right_idxs = findall(x -> x > 0, 
+        [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
+        point_idxs[leaf.right.idx] = point_idxs[leaf.idx][right_idxs]
+        n_pos_right = count(Y[right_idxs] .== classes[2])
+        n_neg_right = count(Y[right_idxs] .== classes[1])
+
+        # Setting labels
+        if n_pos_left/n_neg_left > 1 
+            set_classification_label!(leaf.left, classes[2])
+        elseif n_pos_left/n_neg_left == 1
+            @warn "Leaf $(leaf.left.idx) has samples that are split 50/50. Will set based on label of sibling."
+        end
+        if n_pos_right/n_neg_right > 1 
+            set_classification_label!(leaf.right, classes[2])
+        elseif n_pos_right/n_neg_right == 1
+            @warn "Leaf $(leaf.right.idx) has samples that are split 50/50. Will set based on label of sibling."
+        end
+        if isnothing(leaf.left.label) # Resolving leaf labels based on sibling leaves. 
+            if isnothing(leaf.right.label)
+                throw(ErrorException("Data seems to be perfectly random. Bug."))
+            else
+                leaf.left.label = findall(x -> x != leaf.right.label, classes)[1]
+            end
+            leaf.right.label = findall(x -> x != leaf.left.label, classes)[1]
+        end
+        
+        # Pruning if necessary, 
+        # and choosing whether leaves should be added to queue. 
+        if leaf.left.label == leaf.right.label
+            point_idxs[leaf.idx] = union(point_idxs[leaf.left.idx], point_idxs[leaf.right.idx])
+            delete!(point_idxs, leaf.left.idx)
+            delete!(point_idxs, leaf.right.idx)
+            parent_label = leaf.left.label
+            delete_children!(leaf)
+            leaf.label = parent_label
+        else
+            left_accuracy = abs(n_pos_left - n_neg_left) / length(left_idxs)              
+            right_accuracy = abs(n_pos_right - n_neg_right) / length(right_idxs)
+            if left_accuracy != 1 && 1 - left_accuracy ≥ minpoints / length(left_idxs)
+                push!(valid_leaves, leaf.left)
+            end
+            if right_accuracy != 1 && 1 - right_accuracy ≥ minpoints / length(right_idxs)
+                push!(valid_leaves, leaf.right)
+            end
+            # Since leaf is no longer a leaf, deleting its point indices. 
+            delete!(point_idxs, leaf.idx)
+        end
+    end
+    return
+end

@@ -35,10 +35,10 @@ module OptimalTrees
         get_split_values, set_split_values!,
 
     # Tree training
-        SVM,
+        SVM, hyperplane_cart,
 
     # Scoring functions
-        accuracy, complexity,
+        score, complexity,
 
     # Helper functions
         set_param, get_param,
