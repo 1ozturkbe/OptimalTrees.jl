@@ -1,5 +1,6 @@
 module OptimalTrees
     using DataFrames
+    using DocStringExtensions
     using JuMP
     using MathOptInterface
     using Missings
@@ -12,6 +13,7 @@ module OptimalTrees
     include("tree.jl")
     include("training.jl")
 
+    const MOI = MathOptInterface
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
 
@@ -21,13 +23,22 @@ module OptimalTrees
     # Tree building
         leftchild, rightchild, children, 
         alloffspring, printnode,
-        generate_binary_tree, MIOTree_defaults, MIOTree, build_MIOTree,
-        generate_tree_model, delete_children!, prune!, 
+        generate_binary_tree, MIOTree_defaults, MIOTree,
+        generate_MIO_model, delete_children!, prune!, chop_down!,
         populate_nodes!,
-        apply, score, complexity,
-        is_leaf, get_classification_label, 
-        get_split_weights, get_split_threshold,
+        apply, predict,
+        is_leaf, depth, lineage,
+        get_classification_label, 
+        set_classification_label!, 
+        get_split_values, set_split_values!,
+
+    # Tree training
+        SVM, hyperplane_cart,
+
+    # Scoring functions
+        score, complexity,
 
     # Helper functions
-        set_param, get_param
+        set_param, get_param,
+        allnodes, allleaves
 end

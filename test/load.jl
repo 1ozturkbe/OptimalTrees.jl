@@ -1,16 +1,18 @@
+using Pkg
+Pkg.activate("test")
 
 using DataFrames
+using Gurobi
 using JuMP
-using CPLEX
 using CSV
 using MathOptInterface
 using Test
 using Random
 
-global MOI = MathOptInterface
-global CPLEX_SILENT = with_optimizer(CPLEX.Optimizer, CPX_PARAM_SCRIND = 0)
 Random.seed!(1);
-MOI.Silent() = true;
 include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees
+SOLVER_SILENT = with_optimizer(Gurobi.Optimizer, OutputFlag = 0, Gurobi.Env())
+
+include("utilities.jl")

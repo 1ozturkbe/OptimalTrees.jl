@@ -7,6 +7,8 @@ test_coverage:
 
 # Run julia17 --project=test/. --code-coverage test/all.jl
 # Then restart julia from within OptimalConstraintTree and run this file.
+using Pkg
+Pkg.activate("test")
 global PROJECT_ROOT = @__DIR__
 ENV["CODECOV_TOKEN"]= "dfef6217-c401-4f55-91b7-efbf1afc6ca0"
 using Coverage

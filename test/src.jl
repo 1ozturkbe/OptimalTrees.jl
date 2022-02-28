@@ -1,13 +1,5 @@
-""" Tests MIO-based tree learning. """
-function test_training()
-    path = "data/iris.data"
-    csv_data = CSV.File(path, header=false)
-    iris_names = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-    df = DataFrame(csv_data)
-    rename!(df, iris_names)
-    dropmissing!(df)
-
-    # Checking BinaryNode
+""" Tests the functionalities of BinaryNode. """
+function test_binarynode()
     bn = BinaryNode(1)
     leftchild(bn, BinaryNode(2))
     rightchild(bn, BinaryNode(3))
@@ -15,48 +7,68 @@ function test_training()
     @test all([child.idx for child in children(bn)] .== [2,3]) &&
         isempty(children(bn.right.right)) && length(alloffspring(bn)) == 3
     
-    deleted_child = bn.right.right
     delete_children!(bn.right)
     @test isnothing(bn.parent) && isnothing(bn.right.right) && 
         isempty(children(bn.right)) && length(alloffspring(bn)) == 2
 
-    # Checking MIOTree
+    @test_throws ErrorException set_split_values!(bn.right, [1,2,3], 4)
+    @test_throws ErrorException set_classification_label!(bn, 5)
+end
+
+""" Tests non-optimization functionalities of MIOTree. """
+function test_miotree()
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
-    mt = build_MIOTree(CPLEX_SILENT; max_depth = 2, minbucket = 0.03)
-    set_param(mt, :max_depth, 4)
-
+    mt = MIOTree(SOLVER_SILENT; max_depth = 4, minbucket = 0.03)
+    df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 3
     set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.001)
-    generate_tree_model(mt, X, Y)
-    @test all(is_leaf.(mt.leaves))
-    @test sum(is_leaf.(mt.nodes)) == 2^md
-    set_optimizer(mt, CPLEX_SILENT)
+    set_param(mt, :minbucket, 0.01)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X, Y)
+    @test length(allleaves(mt)) == 2^md
+
+    set_optimizer(mt, SOLVER_SILENT)
     optimize!(mt)
-    # # Practicing pruning the tree
+
     m = mt.model
     as = getvalue.(m[:a])
-    bs = getvalue.(m[:b])
-    Nkt = getvalue.(m[:Nkt])
-    Nt = getvalue.(m[:Nt])
     d = getvalue.(m[:d])
     Lt = getvalue.(m[:Lt])
     ckt = getvalue.(m[:ckt])
+    Nkt = getvalue.(m[:Nkt])
     populate_nodes!(mt)
+    @test length(allleaves(mt)) == 2^md
+    @test sum(!isnothing(node.a) for node in allnodes(mt)) == sum(sum(as[i,:]) != 0 for i = 1:2^md-1)
     prune!(mt)
-    @test length(mt.nodes) == length(alloffspring(mt.root)) + 1 
-    @test length(mt.leaves) == sum(ckt .!= 0)
-    @test score(mt) == sum(Lt) && complexity(mt) == sum(as .!= 0)
-
-    # We know there exists a perfect classifier, so let's test apply
-    # @test all(apply(mt, X) .== Y)
-    # For some reason, optimal trees don't seem to be optimal...
-    # FIgure out why I'm getting non-zero 
+    @test length(allleaves(mt)) == sum(ckt .!= 0) == sum(Nkt .!= 0)
+    @test sum(Nkt .!= 0) == count(!isnothing(node.label) for node in allnodes(mt))
+    @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-2) && complexity(mt) == sum(as .!= 0)
 end
 
-test_training()
+function test_hyperplanecart()
+    mt = MIOTree(SOLVER_SILENT)
+    df = binarize(load_irisdata())
+    X = Matrix(df[:,1:4])
+    Y =  Array(df[:, "class"])
+    hyperplane_cart(mt, X, Y)
+    @test score(mt, X, Y) == 1.
+    nds = apply(mt, X)
+    @test all(getproperty.(nds, :label) .== Y)
+    @test all(isnothing.(getproperty.(allleaves(mt), :label)) .== false)
+    leaves = allleaves(mt)
+    not_leaves = [nd for nd in allnodes(mt) if !is_leaf(nd)]
+    @test all(is_leaf.(not_leaves) .== false)
+    @test all(isnothing.(getproperty.(not_leaves, :a)) .== false)
+    @test all(isnothing.(getproperty.(leaves, :label)) .== false)
+end
+
+test_binarynode()
+
+test_miotree()
+
+test_hyperplanecart()
