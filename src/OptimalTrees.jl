@@ -25,8 +25,8 @@ module OptimalTrees
     # Tree building
         leftchild, rightchild, children, 
         alloffspring, printnode,
-        generate_binary_tree, MIOTree_defaults, MIOTree, build_MIOTree,
-        generate_tree_model, delete_children!, prune!, 
+        generate_binary_tree, MIOTree_defaults, MIOTree,
+        generate_MIO_model, delete_children!, prune!, 
         populate_nodes!,
         apply, predict,
         is_leaf,
@@ -41,5 +41,6 @@ module OptimalTrees
         accuracy, complexity,
 
     # Helper functions
-        set_param, get_param
+        set_param, get_param,
+        allnodes, allleaves
 end

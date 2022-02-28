@@ -1,7 +1,7 @@
 """ Initializes guesses for MIOTree based on previous solution. """
 function initialize_guesses(mt::MIOTree)
     m = mt.model
-    for nd in mt.nodes
+    for nd in allnodes(mt)
         if is_leaf(nd) && !isnothing(nd.label)
             for i = 1:length(mt.classes)
                 if mt.classes[i] == nd.label
@@ -19,12 +19,12 @@ function initialize_guesses(mt::MIOTree)
 end
 
 # set_param(mt, :max_depth, 1)
-# generate_tree_model(mt, X, Y)
+# generate_MIO_model(mt, X, Y)
 # set_optimizer(mt, CPLEX_SILENT)
 # optimize!(mt)
 # for i = 2:get_param(mt, :max_depth)
 #     set_param(mt, :max_depth, i)
-#     generate_tree_model(mt, X, Y)
+#     generate_MIO_model(mt, X, Y)
 #     set_optimizer(mt, CPLEX_SILENT)
 #     optimize!(mt)
 # end

@@ -3,11 +3,11 @@ JuMP.set_optimizer(mt::MIOTree, solver) = JuMP.set_optimizer(mt.model, solver)
 JuMP.optimize!(mt::MIOTree) = JuMP.optimize!(mt.model)
 
 """
-    generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
+    generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
 
-Generates a JuMP MIO model of the tree classifier, with data X and Y.
+Generates a MIO model of the tree defined from mt.root, with data X and Y.
 """
-function generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
+function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     if !isempty(mt.model.obj_dict)
         mt.model = JuMP.Model() # TODO: find a way to add solver in here.
     end
@@ -15,8 +15,10 @@ function generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
 
     # Reference minimal parameters
     max_depth = get_param(mt, :max_depth)
-    nd_idxs = [nd.idx for nd in mt.nodes] # Node indices
-    lf_idxs = [lf.idx for lf in mt.leaves] # Leaf indices
+    nds = allnodes(mt)
+    lfs = [nd for nd in nds if is_leaf(nd)]
+    nd_idxs = getproperty.(nds, :idx) # Node indices
+    lf_idxs = getproperty.(lfs, :idx) # Leaf indices
     sp_idxs = [idx for idx in nd_idxs if idx ∉ lf_idxs]
     min_points = get_param(mt, :minbucket)
     if !isa(min_points, Int) && 0 <= min_points <= 1
@@ -68,7 +70,7 @@ function generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
     @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] <= Nt[i] - Nkt[j, i] + n_samples * ckt[j,i])
 
     @constraint(mt.model, sum(abar[mt.root.idx, :]) <= d[mt.root.idx])
-    for nd in mt.nodes
+    for nd in nds
         if !is_leaf(nd) && !isnothing(nd.parent)
             @constraint(mt.model, d[nd.idx] <= d[nd.parent.idx])
             @constraint(mt.model, sum(abar[nd.idx, :]) <= d[nd.idx])
@@ -76,7 +78,7 @@ function generate_tree_model(mt::MIOTree, X::Matrix, Y::Array)
     end
 
     mu = 5e-5
-    for lf in mt.leaves
+    for lf in lfs
         # Enforcing minbucket 
         @constraint(mt.model, [i=1:n_samples], z[i, lf.idx] <= lt[lf.idx])
         @constraint(mt.model, sum(z[:, lf.idx]) >= min_points*lt[lf.idx])
@@ -138,7 +140,7 @@ function SVM(X::Matrix, Y::Array, solver, C = 0.01)
     n_samples, n_vars = size(X)
     classes = sort(unique(Y)) # The potential classes are sorted. 
     k = length(classes)
-    k == 2 || throw(ErrorException("Detected $(k) classes for the SVM." * 
+    k == 2 || throw(ErrorException("Detected $(k) class for the SVM." * 
         " Only two classes allowed."))
     Y_san = ones(n_samples) # TODO: maybe don't generate -1/1 data every time? 
     Y_san[findall(Y .== classes[1])] .= -1

@@ -1,7 +1,7 @@
 
 """ Adds one layer of depth to MIOTree."""
 function add_depth(mt::MIOTree)
-    all_nodes = [mt.root, alloffspring(mt.root)...]
+    all_nodes = allnodes(mt)
     all_leaves = [nd for nd in all_nodes if is_leaf(nd)]
     max_idx = maximum([nd.idx for nd in all_nodes])
     all_idxs = max_idx .+ collect(1:2*length(all_leaves))

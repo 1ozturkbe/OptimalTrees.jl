@@ -9,9 +9,7 @@ using MathOptInterface
 using Test
 using Random
 
-global MOI = MathOptInterface
 Random.seed!(1);
-MOI.Silent() = true;
 include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees

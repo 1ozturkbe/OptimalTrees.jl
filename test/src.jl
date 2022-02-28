@@ -40,109 +40,60 @@ function test_binarynode()
     @test_throws ErrorException set_classification_label!(bn, 5)
 end
 
-
-
-""" Tests MIO-based tree learning. """
-function test_training()
-    path = "data/iris.data"
-    csv_data = CSV.File(path, header=false)
-    iris_names = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-    df = DataFrame(csv_data)
-    rename!(df, iris_names)
-    dropmissing!(df)
-
-
-
-    # Checking MIOTree
+""" Tests non-optimization functionalities of MIOTree. """
+function test_MIOTree()
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
-    mt = build_MIOTree(CPLEX_SILENT; max_depth = 2, minbucket = 0.03)
+    mt = MIOTree(CPLEX_SILENT; max_depth = 2, minbucket = 0.03)
     set_param(mt, :max_depth, 4)
-
+    df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 3
     set_param(mt, :max_depth, md)
     set_param(mt, :minbucket, 0.001)
-    generate_tree_model(mt, X, Y)
-    @test all(is_leaf.(mt.leaves))
-    @test sum(is_leaf.(mt.nodes)) == 2^md
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X, Y)
+    @test length(allleaves(mt)) == 2^md
+end
+
+""" Tests full MIO-based tree learning. """
+function test_MIOtraining(df = load_irisdata())
+    mt = MIOTree(CPLEX_SILENT)
+    df = binarize(load_irisdata())
+    X = Matrix(df[:,1:4])
+    Y =  Array(df[:, "class"])
+    md = 3
+    set_param(mt, :max_depth, md)
+    set_param(mt, :minbucket, 0.001)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X, Y)
     set_optimizer(mt, CPLEX_SILENT)
     optimize!(mt)
     # # Practicing pruning the tree
     m = mt.model
     as = getvalue.(m[:a])
-    bs = getvalue.(m[:b])
-    Nkt = getvalue.(m[:Nkt])
-    Nt = getvalue.(m[:Nt])
     d = getvalue.(m[:d])
     Lt = getvalue.(m[:Lt])
     ckt = getvalue.(m[:ckt])
     populate_nodes!(mt)
     prune!(mt)
-    @test length(mt.nodes) == length(alloffspring(mt.root)) + 1 
-    @test length(mt.leaves) == sum(ckt .!= 0)
-    @test score(mt) == sum(Lt) && complexity(mt) == sum(as .!= 0)
-
-    # We know there exists a perfect classifier, so let's test apply
-    # @test all(apply(mt, X) .== Y)
-    # For some reason, optimal trees don't seem to be optimal...
-    # FIgure out why I'm getting non-zero 
+    @test length(allleaves(mt)) == sum(ckt .!= 0)
+    @test accuracy(mt) == sum(Lt) && complexity(mt) == sum(as .!= 0)
 end
-
-# test_training()
-
-""" Adds one layer of depth to MIOTree."""
-function add_depth(mt::MIOTree)
-    max_idx = maximum([nd.idx for nd in mt.nodes])
-    all_idxs = max_idx .+ collect(1:2*length(mt.leaves))
-    new_leaves = BinaryNode[]
-    for leaf in mt.leaves
-        leftchild(leaf, BinaryNode(popfirst!(all_idxs)))
-        push!(new_leaves, leaf.left)        
-        rightchild(leaf, BinaryNode(popfirst!(all_idxs)))
-        push!(new_leaves, leaf.right)
-    end
-    mt.leaves = new_leaves
-    return
-end
-
-mt = build_MIOTree(CPLEX_SILENT; max_depth = 6, minbucket = 0.03)
-# Sanitize Y for SVM
-path = "data/iris.data"
-csv_data = CSV.File(path, header=false)
-iris_names = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-df = DataFrame(csv_data)
-rename!(df, iris_names)
-dropmissing!(df)
-
-X = Matrix(df[:,1:4])
-Y = Array(df[:,5])
-Y_bin = []
-for val in Y
-    if val == "Iris-setosa"
-        push!(Y_bin, "Iris-versicolor")
-    else
-        push!(Y_bin, val)
-    end
-end
-Y = Y_bin
 
 function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     n_samples, n_vars = size(X)
     classes = sort(unique(Y))
+    length(classes) == 2 || throw(ErrorException("Hyperplane CART can only be applied to binary classification problems. "))
+    isempty(alloffspring(mt.root)) || throw(ErrorException("Hyperplane CART can only be applied to previously unbuilt trees. "))
     minpoints = ceil(n_samples * get_param(mt, :minbucket))
-    delete_children!(mt.root)
-    mt.leaves = [mt.root]
-    mt.nodes = [mt.root]
     counts = Dict((i => count(==(i), Y)) for i in unique(Y))
     maxval = 0
     maxkey = ""
     for (key, val) in counts
-        global maxval
-        global maxkey
         if val ≥ maxval
             maxval = val
             maxkey = key
@@ -152,9 +103,6 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     ct = 1
     point_idxs = Dict(mt.root.idx => collect(1:n_samples))
     while !isempty(valid_leaves)
-        global ct
-        global point_idxs
-        global valid_leaves
         leaf = popfirst!(valid_leaves)
         @info "Trying $(leaf.idx)..."
         leaf.a, leaf.b = SVM(X[point_idxs[leaf.idx], :],
@@ -166,8 +114,8 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         left_idxs = findall(x -> x <= 0, 
             [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
         point_idxs[leaf.left.idx] = point_idxs[leaf.idx][left_idxs]
-        n_pos_left = sum(Y[left_idxs].== classes[2])
-        n_neg_left = sum(Y[left_idxs] .== classes[1])
+        n_pos_left = count(Y[left_idxs].== classes[2])
+        n_neg_left = count(Y[left_idxs] .== classes[1])
 
         # Checking right child, and adding to valid leaves if necessary
         ct += 1
@@ -175,8 +123,8 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         right_idxs = findall(x -> x > 0, 
         [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
         point_idxs[leaf.right.idx] = point_idxs[leaf.idx][right_idxs]
-        n_pos_right = sum(Y[right_idxs].== classes[2])
-        n_neg_right = sum(Y[right_idxs] .== classes[1])
+        n_pos_right = count(Y[right_idxs] .== classes[2])
+        n_neg_right = count(Y[right_idxs] .== classes[1])
 
         # Setting labels
         if n_pos_left/n_neg_left > 1 
@@ -218,3 +166,13 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     end
     return
 end
+
+function test_hyperplanecart()
+    @test true
+end
+
+test_binarynode()
+
+test_MIOTree()
+
+test_MIOtraining()
