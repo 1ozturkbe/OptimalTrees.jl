@@ -64,8 +64,8 @@ end
 
 """ Returns all "younger" relatives of a BinaryNode. """
 function alloffspring(nd::BinaryNode)
-    offspr = [child for child in children(nd)]
-    queue = [child for child in children(nd)]
+    offspr = [children(nd)...]
+    queue = [children(nd)...]
     while !isempty(queue)
         nextnode = popfirst!(queue)
         if !is_leaf(nextnode)
@@ -80,6 +80,17 @@ function alloffspring(nd::BinaryNode)
         end
     end
     return offspr
+end
+
+""" Returns lineage of BinaryNode to the tree root. """
+function lineage(nd::BinaryNode)
+    parents = []
+    bn = nd
+    while !isnothing(bn.parent)
+        push!(parents, bn.parent)
+        bn = bn.parent
+    end
+    return parents
 end
 
 """
@@ -125,6 +136,21 @@ Checks whether a BinaryNode is a leaf of the tree.
 """
 function is_leaf(bn::BinaryNode)
     return isnothing(bn.left) && isnothing(bn.right)
+end
+
+"""
+    depth(bn::BinaryNode)
+
+Finds the depth of current BinaryNode from the tree root. 
+"""
+function depth(bn::BinaryNode)
+    d = 0
+    nd = bn
+    while !isnothing(nd.parent)
+        d +=1
+        nd = nd.parent
+    end
+    return d
 end
 
 """

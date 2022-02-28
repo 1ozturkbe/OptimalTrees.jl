@@ -27,7 +27,7 @@ module OptimalTrees
         generate_MIO_model, delete_children!, prune!, chop_down!,
         populate_nodes!,
         apply, predict,
-        is_leaf,
+        is_leaf, depth, lineage,
         get_classification_label, 
         set_classification_label!, 
         get_split_values, set_split_values!,

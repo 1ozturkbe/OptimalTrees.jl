@@ -8,9 +8,6 @@ JuMP.optimize!(mt::MIOTree) = JuMP.optimize!(mt.model)
 Generates a MIO model of the tree defined from mt.root, with data X and Y.
 """
 function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
-    if !isempty(mt.model.obj_dict)
-        mt.model = JuMP.Model() # TODO: find a way to add solver in here.
-    end
     n_samples, n_vars = size(X)
 
     # Reference minimal parameters
@@ -76,59 +73,36 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         end
     end
 
-    mu = 1e-8 # TODO: see if this bugs out.
+    mu = get_param(mt, :hypertol) # hyperplane separation tolerance
     for lf in lfs
         # Enforcing minbucket 
         @constraint(mt.model, [i=1:n_samples], z[i, lf.idx] <= lt[lf.idx])
         @constraint(mt.model, sum(z[:, lf.idx]) >= min_points*lt[lf.idx])
         # Enforcing hyperplane splits
         for i=1:n_samples
-            nd = lf
-            while nd.idx != mt.root.idx
-                if nd.idx == nd.parent.left.idx
-                    @constraint(mt.model, sum(a[nd.parent.idx, :] .* X[i, :]) + mu <= b[nd.parent.idx] + (2+mu)*(1-z[i,lf.idx])) 
-                elseif nd.idx == nd.parent.right.idx
-                    @constraint(mt.model, sum(a[nd.parent.idx, :] .* X[i, :]) >= b[nd.parent.idx] - 2*(1-z[i,lf.idx])) 
+            ps = [lf, lineage(lf)...] # the parent sequence
+            for j = 1:length(ps)-1
+                if ps[j].idx == ps[j+1].left.idx
+                    @constraint(mt.model, sum(a[ps[j+1].idx, :] .* X[i, :]) + mu <= b[ps[j+1].idx] + (2+mu)*(1-z[i,lf.idx])) 
+                elseif ps[j].idx == ps[j+1].right.idx
+                    @constraint(mt.model, sum(a[ps[j+1].idx, :] .* X[i, :]) >= b[ps[j+1].idx] - 2*(1-z[i,lf.idx])) 
                 else
-                    throw(ErrorException("Node backtracking failed for some reason."))
-                end
-                try 
-                    nd = nd.parent
-                catch err
-                    if isa(err, UndefRefError)
-                        break
-                    else
-                        throw(ErrorException("Node parenting failed unexpectedly."))
-                        break
-                    end
+                    throw(ErrorException("Node backtracking failed for some reason. Bug."))
                 end
             end
         end
     end
 
-    # Objective function: misclassification error + complexity
-    @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * sum(s[:,:]))
+    # Objective function: misclassification error + complexity (depth * label cost).
+    # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
+    @objective(mt.model, Min, 1/n_samples * sum(Lt) + 
+        get_param(mt, :cp) * (
+            sum(depth(nd)*sum(s[nd.idx,:]) for nd in nds if !is_leaf(nd)) + 
+            sum(depth(nd)*lt[nd.idx] for nd in lfs)
+        )
+    )
     return
 end
-
-# """ 
-#     svm(X::DataFrame, Y::Array, solver, threshold = 0)
-
-# Finds the unregularized SVM split, where threshold is the allowable error. 
-# """
-# function svm(X::Matrix, Y::Array, solver, threshold = 0)
-#     m = JuMP.Model(solver)
-#     @variable(m, error[1:length(Y)] >= 0)
-#     @variable(m, β[1:size(X, 2)])
-#     @variable(m, β0)
-#     for i=1:length(Y)
-#         @constraint(m, threshold + error[i] >= Y[i] - β0 - sum(X[i,:] .* β))
-#         @constraint(m, threshold + error[i] >= -Y[i] + β0 + sum(X[i,:] .* β))
-#     end
-#     @objective(m, Min, sum(error))
-#     optimize!(m)
-#     return getvalue(β0), getvalue.(β)
-# end
 
 """ 
     SVM(X::Matrix, Y::Array, solver, C = 0.01)

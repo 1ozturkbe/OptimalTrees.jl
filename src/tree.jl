@@ -6,7 +6,8 @@ Contains default MIOTree parameters, and modifies them with kwargs.
 function MIOTree_defaults(kwargs...)
     d = Dict(:max_depth => 5,
         :cp => 1e-6,
-        :minbucket => 0.01) # in seconds
+        :hypertol => 1e-5, # hyperplane separation tolerance
+        :minbucket => 0.01)
     if !isempty(kwargs)
         for (key, value) in kwargs
             set_param(d, key, value)
@@ -46,7 +47,7 @@ mutable struct MIOTree
     params::Dict
     classes::Union{Nothing, Array{Any}}
     solver
-    
+
     function MIOTree(solver; kwargs...)
         root = BinaryNode(1)
         mt = new(JuMP.Model(solver),
@@ -188,24 +189,24 @@ See ```populate_nodes''' for
 how to populate nodes using optimal solution data. 
 """
 function prune!(mt::MIOTree)
-    queue = BinaryNode[mt.root]
+    queue = [mt.root]
     while !isempty(queue)
-        println("Queue length: " * string(length(queue)))
         nd = popfirst!(queue)
         if !isnothing(nd.a) && any(nd.a != 0)
-            append!(queue, children(nd))
+            for child in children(nd)
+                push!(queue, child)
+            end
         else
-            println("Enter loop with node $(nd.idx).")
             if isnothing(nd.label)
                 alloffspr = alloffspring(nd)
                 alllabels = [nextnode.label for nextnode in alloffspr if !isnothing(nextnode.label)]
-                # if length(alllabels) == 1 
+                if length(alllabels) == 1 
                     nd.label = alllabels[1]
-                # elseif length(alllabels) > 1
-                #     throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
-                # else
-                #     throw(ErrorException("Missing labels below node $(nd.idx)! Bug!"))
-                # end
+                elseif length(alllabels) > 1
+                    throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
+                else
+                    throw(ErrorException("Missing labels below node $(nd.idx)! Bug!"))
+                end
             end
             delete_children!(nd)
         end

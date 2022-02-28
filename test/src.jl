@@ -16,7 +16,7 @@ function test_binarynode()
 end
 
 """ Tests non-optimization functionalities of MIOTree. """
-function test_MIOTree()
+function test_miotree()
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
@@ -47,7 +47,7 @@ function test_MIOTree()
     prune!(mt)
     @test length(allleaves(mt)) == sum(ckt .!= 0) == sum(Nkt .!= 0)
     @test sum(Nkt .!= 0) == count(!isnothing(node.label) for node in allnodes(mt))
-    @test score(mt, X, Y) == sum(Lt) && complexity(mt) == sum(as .!= 0)
+    @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-2) && complexity(mt) == sum(as .!= 0)
 end
 
 function test_hyperplanecart()
@@ -67,8 +67,8 @@ function test_hyperplanecart()
     @test all(isnothing.(getproperty.(leaves, :label)) .== false)
 end
 
-# test_binarynode()
+test_binarynode()
 
-# test_MIOTree()
+test_miotree()
 
-# test_hyperplanecart()
+test_hyperplanecart()
