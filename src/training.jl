@@ -14,7 +14,6 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     n_samples, n_vars = size(X)
 
     # Reference minimal parameters
-    max_depth = get_param(mt, :max_depth)
     nds = allnodes(mt)
     lfs = [nd for nd in nds if is_leaf(nd)]
     nd_idxs = getproperty.(nds, :idx) # Node indices
@@ -77,7 +76,7 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         end
     end
 
-    mu = 5e-5
+    mu = 1e-8 # TODO: see if this bugs out.
     for lf in lfs
         # Enforcing minbucket 
         @constraint(mt.model, [i=1:n_samples], z[i, lf.idx] <= lt[lf.idx])
@@ -206,13 +205,18 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
             set_classification_label!(leaf.left, classes[2])
         elseif n_pos_left/n_neg_left == 1
             @warn "Leaf $(leaf.left.idx) has samples that are split 50/50. Will set based on label of sibling."
+        else
+            set_classification_label!(leaf.left, classes[1])
         end
         if n_pos_right/n_neg_right > 1 
             set_classification_label!(leaf.right, classes[2])
         elseif n_pos_right/n_neg_right == 1
             @warn "Leaf $(leaf.right.idx) has samples that are split 50/50. Will set based on label of sibling."
+        else
+            set_classification_label!(leaf.right, classes[1])
         end
-        if isnothing(leaf.left.label) # Resolving leaf labels based on sibling leaves. 
+        # Resolving leaf labels based on sibling leaves. 
+        if isnothing(leaf.left.label) 
             if isnothing(leaf.right.label)
                 throw(ErrorException("Data seems to be perfectly random. Bug."))
             else

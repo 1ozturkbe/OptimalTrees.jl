@@ -46,33 +46,21 @@ function test_MIOTree()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
-    mt = MIOTree(SOLVER_SILENT; max_depth = 2, minbucket = 0.03)
-    set_param(mt, :max_depth, 4)
+    mt = MIOTree(SOLVER_SILENT; max_depth = 4, minbucket = 0.03)
     df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 3
     set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.001)
+    set_param(mt, :minbucket, 0.05)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
     @test length(allleaves(mt)) == 2^md
-end
 
-""" Tests full MIO-based tree learning. """
-function test_MIOtraining(df = load_irisdata())
-    mt = MIOTree(SOLVER_SILENT)
-    df = binarize(load_irisdata())
-    X = Matrix(df[:,1:4])
-    Y =  Array(df[:, "class"])
-    md = 3
-    set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.001)
-    generate_binary_tree(mt)
-    generate_MIO_model(mt, X, Y)
     set_optimizer(mt, SOLVER_SILENT)
     optimize!(mt)
-    # # Practicing pruning the tree
+
+    # Practicing pruning the tree
     m = mt.model
     as = getvalue.(m[:a])
     d = getvalue.(m[:d])
@@ -81,7 +69,7 @@ function test_MIOtraining(df = load_irisdata())
     populate_nodes!(mt)
     prune!(mt)
     @test length(allleaves(mt)) == sum(ckt .!= 0)
-    @test accuracy(mt) == sum(Lt) && complexity(mt) == sum(as .!= 0)
+    @test score(mt, X, Y) == sum(Lt) && complexity(mt) == sum(as .!= 0)
 end
 
 function test_hyperplanecart()
@@ -93,12 +81,16 @@ function test_hyperplanecart()
     @test score(mt, X, Y) == 1.
     nds = apply(mt, X)
     @test all(getproperty.(nds, :label) .== Y)
+    @test all(isnothing.(getproperty.(allleaves(mt), :label)) .== false)
+    leaves = allleaves(mt)
+    not_leaves = [nd for nd in allnodes(mt) if !is_leaf(nd)]
+    @test all(is_leaf.(not_leaves) .== false)
+    @test all(isnothing.(getproperty.(not_leaves, :a)) .== false)
+    @test all(isnothing.(getproperty.(leaves, :label)) .== false)
 end
 
-test_binarynode()
+# test_binarynode()
 
-test_MIOTree()
+# test_MIOTree()
 
-test_MIOtraining()
-
-test_hyperplanecart()
+# test_hyperplanecart()
