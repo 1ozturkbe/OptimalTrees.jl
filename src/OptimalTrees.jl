@@ -11,6 +11,7 @@ module OptimalTrees
     include("helpers.jl")
     include("binarynode.jl")
     include("tree.jl")
+    include("tree_utils.jl")
     include("training.jl")
 
     const MOI = MathOptInterface
@@ -34,6 +35,10 @@ module OptimalTrees
 
     # Tree training
         SVM, hyperplane_cart,
+
+    # Tree utilities
+        find_leaves, check_if_trained, 
+        trust_region_data,
 
     # Scoring functions
         score, complexity,
