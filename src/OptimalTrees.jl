@@ -45,5 +45,8 @@ module OptimalTrees
 
     # Helper functions
         set_param, get_param,
-        allnodes, allleaves
+        allnodes, allleaves,
+
+    # Debugging
+        debug_if_trained
 end

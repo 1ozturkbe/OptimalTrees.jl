@@ -14,6 +14,14 @@ function check_if_trained(mt::MIOTree)
     return true
 end
 
+""" Prints problems with MIOTree for debugging. """
+function debug_if_trained(mt::MIOTree)
+    for nd in allnodes(mt)
+        (is_leaf(nd) && isnothing(nd.label)) && println("Leaf $(nd.idx) has no label.")
+        (!is_leaf(nd) && (isnothing(nd.a) || isnothing(nd.b))) && println("Split $(nd.idx) has no hyperplane data.")
+    end
+end
+
 """
     $(TYPEDSIGNATURES)
 

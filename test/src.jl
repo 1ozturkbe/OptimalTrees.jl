@@ -27,27 +27,29 @@ function test_miotree()
     Y =  Array(df[:, "class"])
     md = 3
     set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.01)
+    set_param(mt, :minbucket, 0.001)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
     @test length(allleaves(mt)) == 2^md
 
     set_optimizer(mt, SOLVER_SILENT)
     optimize!(mt)
+    @test !check_if_trained(mt) # Trees must be populated and pruned before they qualify!
 
     m = mt.model
-    as = getvalue.(m[:a])
-    d = getvalue.(m[:d])
-    Lt = getvalue.(m[:Lt])
-    ckt = getvalue.(m[:ckt])
-    Nkt = getvalue.(m[:Nkt])
+    as, d, Lt, ckt, Nkt = [getvalue.(m[i]) for i in [:a, :d, :Lt, :ckt, :Nkt]]; 
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
-    @test sum(!isnothing(node.a) for node in allnodes(mt)) == sum(sum(as[i,:]) != 0 for i = 1:2^md-1)
+    @test sum(!isnothing(node.a) for node in allnodes(mt)) == 2^md-1 - sum(all(isapprox.(as[i,:], 0, atol = 1e-10)) for i = 1:2^md-1)
+    @test sum(!isnothing(node.label) for node in allnodes(mt)) == length(Nkt) - sum(isapprox.(Nkt, 0, atol = 1e-5))
     prune!(mt)
-    @test length(allleaves(mt)) == sum(ckt .!= 0) == sum(Nkt .!= 0)
-    @test sum(Nkt .!= 0) == count(!isnothing(node.label) for node in allnodes(mt))
-    @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-2) && complexity(mt) == sum(as .!= 0)
+    @test check_if_trained(mt)
+    @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == prod(size(Nkt)) - sum(isapprox.(Nkt, 0, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
+    @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-1) && complexity(mt) == sum(as .!= 0)
+
+    # Checking data extraction
+    ud, ld = trust_region_data(mt)
+    @test all(sum(length(ud[lf.idx]) + length(ld[lf.idx])) == depth(lf) for lf in allleaves(mt)) # The right number of splits
 end
 
 function test_hyperplanecart()
@@ -56,6 +58,7 @@ function test_hyperplanecart()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     hyperplane_cart(mt, X, Y)
+    @test check_if_trained(mt)
     @test score(mt, X, Y) == 1.
     nds = apply(mt, X)
     @test all(getproperty.(nds, :label) .== Y)
@@ -65,6 +68,14 @@ function test_hyperplanecart()
     @test all(is_leaf.(not_leaves) .== false)
     @test all(isnothing.(getproperty.(not_leaves, :a)) .== false)
     @test all(isnothing.(getproperty.(leaves, :label)) .== false)
+
+    # Check that pruning does nothing
+    prune!(mt)
+    @test check_if_trained(mt)
+
+    # Checking data extraction
+    ud, ld = trust_region_data(mt)
+    @test all(sum(length(ud[lf.idx]) + length(ld[lf.idx])) == depth(lf) for lf in allleaves(mt)) # The right number of splits
 end
 
 test_binarynode()
