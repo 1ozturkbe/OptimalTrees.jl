@@ -171,7 +171,7 @@ function populate_nodes!(mt::MIOTree)
         end
     end
     for lf in allleaves(mt) # Then populate the class values...
-        class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-8) for i = 1:length(mt.classes)]
+        class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-4) for i = 1:length(mt.classes)]
         if sum(class_values) == 1
             lf.label = mt.classes[findall(class_values)[1]]
         elseif sum(class_values) > 1
@@ -189,29 +189,30 @@ See ```populate_nodes''' for
 how to populate nodes using optimal solution data. 
 """
 function prune!(mt::MIOTree)
-    queue = [mt.root]
-    while !isempty(queue)
-        nd = popfirst!(queue)
-        if !isnothing(nd.a) && any(nd.a != 0)
-            for child in children(nd)
-                push!(queue, child)
-            end
-        else
-            if isnothing(nd.label)
-                alloffspr = alloffspring(nd)
-                alllabels = [nextnode.label for nextnode in alloffspr if !isnothing(nextnode.label)]
-                if length(alllabels) == 1 
-                    nd.label = alllabels[1]
-                elseif length(alllabels) > 1
-                    throw(ErrorException("Too many labels below node $(nd.idx)! Bug!"))
+    for node in allleaves(mt)
+        if is_leaf(node) && isnothing(node.label)
+            label = nothing
+            nd = node
+            while isnothing(label)
+                if isnothing(nd.parent)
+                    break
                 else
-                    throw(ErrorException("Missing labels below node $(nd.idx)! Bug!"))
+                    parent = nd.parent
+                    offspring = alloffspring(parent) # TODO: speed this up
+                    labels = [of.label for of in offspring if !isnothing(of.label)]
+                    if length(unique(labels)) == 1
+                        label = labels[1]
+                        parent.label = label
+                        delete_children!(parent)
+                        break
+                    elseif length(unique(labels)) > 1
+                        throw(ErrorException("Something broke in pruning process. Bug."))
+                    end
+                    nd = nd.parent
                 end
             end
-            delete_children!(nd)
         end
     end
-    # Add checks here so that the number of branches + leaves == total number of nodes
     return
 end
 
