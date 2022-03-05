@@ -47,6 +47,29 @@ function test_miotree()
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == prod(size(Nkt)) - sum(isapprox.(Nkt, 0, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
     @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-1) && complexity(mt) == sum(as .!= 0)
 
+    # # Plotting results for debugging
+    # using Plots
+    # colors = ["green", "red", "blue"]
+    # labels = unique(Y)
+    # plt = plot()
+    # for i = 1:length(labels)
+    #     label = labels[i]
+    #     idxs = findall(x -> x == label, Y)
+    #     plt = scatter!(X[idxs,1], X[idxs, 2], color = colors[i], label = labels[i])
+    # end
+    # display(plt)
+
+    # # Plotting correct predictions
+    # colors = ["purple", "yellow"]
+    # labels = [0, 1]
+    # plt = plot()
+    # for i=1:length(labels)
+    #     label = labels[i]
+    #     idxs = findall(x -> x == label, predict(mt, X) .== Y)
+    #     plt = scatter!(X[idxs,1], X[idxs, 2], color = colors[i], label = labels[i])
+    # end
+    # display(plt)
+
     # Checking data extraction
     ud, ld = trust_region_data(mt)
     @test all(sum(length(ud[lf.idx]) + length(ld[lf.idx])) == depth(lf) for lf in allleaves(mt)) # The right number of splits
