@@ -96,7 +96,7 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     # Objective function: misclassification error + complexity (depth * label cost).
     # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
     @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * 
-            (sum(depth(nd)*sum(s[nd.idx,:]) for nd in nds if !is_leaf(nd)))        )
+            (sum(depth(nd)*(sum(s[nd.idx,:]) + d[nd.idx]) for nd in nds if !is_leaf(nd)))        )
     return
 end
 

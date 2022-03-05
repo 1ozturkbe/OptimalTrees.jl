@@ -25,7 +25,7 @@ function test_miotree()
     df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
-    md = 3
+    md = 4
     set_param(mt, :max_depth, md)
     set_param(mt, :minbucket, 0.001)
     generate_binary_tree(mt)
@@ -45,6 +45,7 @@ function test_miotree()
     prune!(mt)
     @test check_if_trained(mt)
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == prod(size(Nkt)) - sum(isapprox.(Nkt, 0, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
+    @test all(getproperty.(apply(mt, X), :label) .== predict(mt, X))
     @test isapprox(score(mt, X, Y), 1-sum(Lt), atol=1e-1) && complexity(mt) == sum(as .!= 0)
 
     # # Plotting results for debugging
