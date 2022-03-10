@@ -224,3 +224,20 @@ function generate_binary_tree(mt::MIOTree)
     generate_binary_tree(mt.root, get_param(mt, :max_depth))
     return
 end
+
+function deepen_to_max_depth(mt::MIOTree)
+    md = get_param(mt, :max_depth)
+    queue = allnodes(mt)
+    idx = maximum([nd.idx for nd in queue])
+    while !isempty(queue)
+        node = popfirst!(queue)
+        if is_leaf(node) && depth(node) < md
+            idx += 1
+            leftchild(node, BinaryNode(idx))
+            idx += 1
+            rightchild(node, BinaryNode(idx))
+            append!(queue, [node.left, node.right])
+        end
+    end
+    return
+end
