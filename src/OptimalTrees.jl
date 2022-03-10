@@ -25,7 +25,7 @@ module OptimalTrees
         leftchild, rightchild, children, 
         alloffspring, printnode,
         generate_binary_tree, MIOTree_defaults, MIOTree,
-        generate_MIO_model, delete_children!, prune!, chop_down!,
+        delete_children!, prune!, chop_down!,
         populate_nodes!,
         apply, predict,
         is_leaf, depth, lineage,
@@ -35,6 +35,7 @@ module OptimalTrees
 
     # Tree training
         SVM, hyperplane_cart,
+        warmstart, generate_MIO_model, 
 
     # Tree utilities
         find_leaves, check_if_trained, 

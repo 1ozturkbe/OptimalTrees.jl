@@ -219,3 +219,23 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     end
     return
 end
+
+""" Warmstarts an MIOTree model using the last solution stored in its nodes. """
+function warmstart(mt::MIOTree)
+    m = mt.model
+    for nd in allnodes(mt)
+        if is_leaf(nd) && !isnothing(nd.label)
+            for i = 1:length(mt.classes)
+                if mt.classes[i] == nd.label
+                    JuMP.set_start_value(m[:ckt][i, nd.idx], 1)
+                else
+                    JuMP.set_start_value(m[:ckt][i, nd.idx], 0)
+                end
+            end
+        elseif !isnothing(nd.a)
+            JuMP.set_start_value.(m[:a][nd.idx, :], nd.a)
+            JuMP.set_start_value(m[:b][nd.idx], nd.b)
+        end
+    end
+    return
+end
