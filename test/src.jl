@@ -100,6 +100,16 @@ function test_hyperplanecart()
     # Checking data extraction
     ud, ld = trust_region_data(mt)
     @test all(sum(length(ud[lf.idx]) + length(ld[lf.idx])) == depth(lf) for lf in allleaves(mt)) # The right number of splits
+
+    # Checking deepening trees, and warmstarting
+    deepen_to_max_depth(mt)
+    mt.model = JuMP.Model(SOLVER_SILENT) # Required to "clean-up" model 
+    generate_MIO_model(mt, X, Y)
+    warmstart(mt)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test isapprox(score(mt, X, Y), 1, atol = 0.01)
 end
 
 test_binarynode()

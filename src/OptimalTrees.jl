@@ -22,19 +22,25 @@ module OptimalTrees
     export MIOTree, BinaryNode, 
 
     # Tree building
+        MIOTree_defaults, MIOTree,
         leftchild, rightchild, children, 
-        alloffspring, printnode,
-        generate_binary_tree, MIOTree_defaults, MIOTree,
-        generate_MIO_model, delete_children!, prune!, chop_down!,
+        printnode, generate_binary_tree, 
+        delete_children!, prune!, chop_down!,
         populate_nodes!,
-        apply, predict,
-        is_leaf, depth, lineage,
+        
+    # More advanced tree building
+        deepen_to_max_depth, 
+
+    # Tree querying
+        is_leaf, depth, lineage, alloffspring,
         get_classification_label, 
         set_classification_label!, 
         get_split_values, set_split_values!,
+        apply, predict,
 
     # Tree training
         SVM, hyperplane_cart,
+        warmstart, generate_MIO_model, 
 
     # Tree utilities
         find_leaves, check_if_trained, 
