@@ -15,7 +15,7 @@ function test_binarynode()
     @test_throws ErrorException set_classification_label!(bn, 5)
 end
 
-""" Tests non-optimization functionalities of MIOTree. """
+""" Tests full MIO solution functionalities of MIOTree. """
 function test_miotree()
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
@@ -102,8 +102,8 @@ function test_hyperplanecart()
     @test all(sum(length(ud[lf.idx]) + length(ld[lf.idx])) == depth(lf) for lf in allleaves(mt)) # The right number of splits
 
     # Checking deepening trees, and warmstarting
-    deepen_to_max_depth(mt)
-    mt.model = JuMP.Model(SOLVER_SILENT) # Required to "clean-up" model 
+    deepen_to_max_depth!(mt)
+    clean_model!(mt.model)
     generate_MIO_model(mt, X, Y)
     warmstart(mt)
     optimize!(mt)
@@ -112,8 +112,28 @@ function test_hyperplanecart()
     @test isapprox(score(mt, X, Y), 1, atol = 0.01)
 end
 
+function test_sequential()
+    mt = MIOTree(SOLVER_SILENT; max_depth = 2, minbucket = 0.03)
+    df = load_irisdata()
+    X = Matrix(df[:,1:4])
+    Y =  Array(df[:, "class"])
+    mt.model = JuMP.Model(SOLVER_SILENT)
+    mt = sequential_train!(mt, X, Y)
+    @test true
+end
+
+
 test_binarynode()
 
 test_miotree()
 
 test_hyperplanecart()
+
+test_sequential()
+
+# using MLDatasets: BostonHousing
+# feature_names = BostonHousing.feature_names()
+# X = Matrix(transpose(BostonHousing.features()))
+# Y = Array(transpose(BostonHousing.targets()))
+# mt = MIOTree(SOLVER_SILENT)
+# hyperplane_cart(mt, X, Y)

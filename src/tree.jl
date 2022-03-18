@@ -152,6 +152,16 @@ function complexity(mt::MIOTree)
     return scor
 end
 
+""" 
+    $(TYPEDSIGNATURES)
+
+Cleans all variables and constraints from a MIOTree. 
+"""
+function clean_model!(mt::MIOTree)
+    mt.model = JuMP.Model(mt.solver)
+    return
+end
+
 """
     $(TYPEDSIGNATURES)
 
@@ -225,7 +235,7 @@ function generate_binary_tree(mt::MIOTree)
     return
 end
 
-function deepen_to_max_depth(mt::MIOTree)
+function deepen_to_max_depth!(mt::MIOTree)
     md = get_param(mt, :max_depth)
     queue = allnodes(mt)
     idx = maximum([nd.idx for nd in queue])
@@ -237,6 +247,22 @@ function deepen_to_max_depth(mt::MIOTree)
             idx += 1
             rightchild(node, BinaryNode(idx))
             append!(queue, [node.left, node.right])
+        end
+    end
+    return
+end
+
+function deepen_one_level!(mt::MIOTree)
+    md = get_param(mt, :max_depth)
+    queue = allnodes(mt)
+    idx = maximum([nd.idx for nd in queue])
+    while !isempty(queue)
+        node = popfirst!(queue)
+        if is_leaf(node) && depth(node) < md
+            idx += 1
+            leftchild(node, BinaryNode(idx))
+            idx += 1
+            rightchild(node, BinaryNode(idx))
         end
     end
     return

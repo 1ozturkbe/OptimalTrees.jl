@@ -29,7 +29,8 @@ module OptimalTrees
         populate_nodes!,
         
     # More advanced tree building
-        deepen_to_max_depth, 
+        deepen_to_max_depth!, 
+        deepen_one_level!, 
 
     # Tree querying
         is_leaf, depth, lineage, alloffspring,
@@ -41,6 +42,7 @@ module OptimalTrees
     # Tree training
         SVM, hyperplane_cart,
         warmstart, generate_MIO_model, 
+        sequential_train!,
 
     # Tree utilities
         find_leaves, check_if_trained, 
@@ -52,6 +54,7 @@ module OptimalTrees
     # Helper functions
         set_param, get_param,
         allnodes, allleaves,
+        clean_model!,
 
     # Debugging
         debug_if_trained
