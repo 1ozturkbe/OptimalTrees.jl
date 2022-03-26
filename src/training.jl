@@ -240,25 +240,27 @@ function warmstart(mt::MIOTree)
 end
 
 """ Trains a tree sequentially by increasing its depth. """
-function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer = 1)
+function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer = 1; pruning = false)
     max_depth = get_param(mt, :max_depth)
     md = min_depth
     set_param(mt, :max_depth, min_depth)
     chop_down!(mt)
     generate_binary_tree(mt)
-    clean_model!(mt.model)
+    clean_model!(mt)
     generate_MIO_model(mt, X, Y)
     optimize!(mt)
     populate_nodes!(mt)
+    pruning && prune!(mt)
     while md < max_depth
         md += 1
         set_param(mt, :max_depth, md)
         deepen_one_level!(mt)
-        clean_model!(mt.model)
+        clean_model!(mt)
         generate_MIO_model(mt, X, Y)
         warmstart(mt)
         optimize!(mt)
         populate_nodes!(mt)
+        pruning && prune!(mt)
     end
     set_param(mt, :max_depth, max_depth)
     return
