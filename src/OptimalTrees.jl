@@ -25,8 +25,9 @@ module OptimalTrees
         MIOTree_defaults, MIOTree,
         leftchild, rightchild, children, 
         printnode, generate_binary_tree, 
-        delete_children!, prune!, chop_down!,
-        populate_nodes!,
+        delete_children!, 
+        populate_nodes!, prune!, 
+        chop_down!,
         
     # More advanced tree building
         deepen_to_max_depth!, 

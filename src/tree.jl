@@ -6,7 +6,7 @@ Contains default MIOTree parameters, and modifies them with kwargs.
 function MIOTree_defaults(kwargs...)
     d = Dict(:max_depth => 5,
         :cp => 1e-6,
-        :hypertol => 1e-5, # hyperplane separation tolerance
+        :hypertol => 0.005, # hyperplane separation tolerance
         :minbucket => 0.01)
     if !isempty(kwargs)
         for (key, value) in kwargs
@@ -199,29 +199,25 @@ See ```populate_nodes''' for
 how to populate nodes using optimal solution data. 
 """
 function prune!(mt::MIOTree)
-    for node in allleaves(mt)
-        if is_leaf(node) && isnothing(node.label)
-            label = nothing
-            nd = node
-            while isnothing(label)
-                if isnothing(nd.parent)
-                    break
-                else
-                    parent = nd.parent
-                    offspring = alloffspring(parent) # TODO: speed this up
-                    labels = [of.label for of in offspring if !isnothing(of.label)]
-                    if length(unique(labels)) == 1
-                        label = labels[1]
-                        parent.label = label
-                        delete_children!(parent)
-                        break
-                    elseif length(unique(labels)) > 1
-                        throw(ErrorException("Something broke in pruning process. Bug."))
-                    end
-                    nd = nd.parent
-                end
+    queue = allleaves(mt)
+    while !isempty(queue) # A bottom-up approach for pruning. 
+        node = popfirst!(queue)
+        par = node.parent
+        if is_leaf(node) && isnothing(node.label) && !isnothing(node.parent)
+            offspring = alloffspring(par) # TODO: speed this up
+            labels = [of.label for of in offspring if !isnothing(of.label)]
+            if length(labels) == 1
+                delete_children!(par)
+                set_classification_label!(par, labels[1])
+            elseif length(labels) == 0
+                delete_children!(par)
+                push!(queue, par)
             end
         end
+    end
+    leaves = allleaves(mt)
+    if any(isnothing(leaf.label) for leaf in leaves)
+        @warn "A subset of leaves is unlabeled. Must label for correct predictions. "
     end
     return
 end
