@@ -114,7 +114,6 @@ function test_hyperplanecart()
     not_leaves = [nd for nd in allnodes(mt) if !is_leaf(nd)]
     @test all(is_leaf.(not_leaves) .== false)
     @test all(isnothing.(getproperty.(not_leaves, :a)) .== false)
-    fix_labeling!(mt)
     # @test all(isnothing.(getproperty.(leaves, :label)) .== false) # TODO: fix this test. 
 end
 
