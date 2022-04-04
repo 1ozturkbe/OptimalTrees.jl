@@ -24,7 +24,6 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     end
     mt.classes = sort(unique(Y)) # The potential classes are sorted. 
     k = length(mt.classes)
-    k != 2 && @info("Detected $(k) unique classes.")
 
     @variable(mt.model, -1 <= a[sp_idxs, 1:n_vars] <= 1)
     @variable(mt.model, 0 <= abar[sp_idxs, 1:n_vars])
@@ -237,5 +236,32 @@ function warmstart(mt::MIOTree)
             JuMP.set_start_value(m[:b][nd.idx], nd.b)
         end
     end
+    return
+end
+
+""" Trains a tree sequentially by increasing its depth. """
+function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer = 1; pruning = false)
+    max_depth = get_param(mt, :max_depth)
+    md = min_depth
+    set_param(mt, :max_depth, min_depth)
+    chop_down!(mt)
+    generate_binary_tree(mt)
+    clean_model!(mt)
+    generate_MIO_model(mt, X, Y)
+    optimize!(mt)
+    populate_nodes!(mt)
+    pruning && prune!(mt)
+    while md < max_depth
+        md += 1
+        set_param(mt, :max_depth, md)
+        deepen_one_level!(mt)
+        clean_model!(mt)
+        generate_MIO_model(mt, X, Y)
+        warmstart(mt)
+        optimize!(mt)
+        populate_nodes!(mt)
+        pruning && prune!(mt)
+    end
+    set_param(mt, :max_depth, max_depth)
     return
 end

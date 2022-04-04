@@ -6,6 +6,7 @@ using Gurobi
 using JuMP
 using CSV
 using MathOptInterface
+using MLDatasets
 using Test
 using Random
 

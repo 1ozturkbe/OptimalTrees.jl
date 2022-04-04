@@ -25,11 +25,13 @@ module OptimalTrees
         MIOTree_defaults, MIOTree,
         leftchild, rightchild, children, 
         printnode, generate_binary_tree, 
-        delete_children!, prune!, chop_down!,
-        populate_nodes!,
+        delete_children!, 
+        populate_nodes!, prune!, 
+        chop_down!,
         
     # More advanced tree building
-        deepen_to_max_depth, 
+        deepen_to_max_depth!, 
+        deepen_one_level!, 
 
     # Tree querying
         is_leaf, depth, lineage, alloffspring,
@@ -41,6 +43,7 @@ module OptimalTrees
     # Tree training
         SVM, hyperplane_cart,
         warmstart, generate_MIO_model, 
+        sequential_train!,
 
     # Tree utilities
         find_leaves, check_if_trained, 
@@ -52,6 +55,7 @@ module OptimalTrees
     # Helper functions
         set_param, get_param,
         allnodes, allleaves,
+        clean_model!,
 
     # Debugging
         debug_if_trained
