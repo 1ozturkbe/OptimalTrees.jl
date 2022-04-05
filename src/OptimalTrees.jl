@@ -50,7 +50,7 @@ module OptimalTrees
         trust_region_data,
 
     # Scoring functions
-        score, complexity,
+        score,
 
     # Helper functions
         set_param, get_param,

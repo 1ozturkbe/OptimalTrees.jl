@@ -41,6 +41,7 @@ function test_miotree()
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
     @test sum(!isnothing(node.a) for node in allnodes(mt)) == 2^md-1 - sum(all(isapprox.(as[i,:], 0, atol = 1e-10)) for i = 1:2^md-1)
+    @test OT.complexity(mt) == sum(as .!= 0)
     prune!(mt)
     @test check_if_trained(mt)
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))

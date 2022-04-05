@@ -142,13 +142,6 @@ Returns the prediction accuracy of MIOTree.
 For classification: misclassification error. 
 For regression: mean absolute error. 
 """
-function score(mt::MIOTree)
-    if JuMP.termination_status(mt.model) == MOI.OPTIMIZE_NOT_CALLED
-        throw(ErrorException("`score` must be called with X, Y data if the MIOTree has not been optimized."))
-    else
-        return sum(JuMP.getvalue.(mt.model[:Lt]))/size(mt.model[:z],1)
-    end
-end
 
 function score(mt::MIOTree, X, Y)
     preds = predict(mt, X)
