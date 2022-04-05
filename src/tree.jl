@@ -160,7 +160,7 @@ Returns the number of nonzero hyperplane coefficients of the MIOTree.
 function complexity(mt::MIOTree)
     scor = 0
     for node in allnodes(mt)
-        if !is_leaf(node)
+        if !is_leaf(node) && !isnothing(node.a)
             nonzeros = length(node.a) - sum(isapprox.(node.a, zeros(length(node.a))))
             scor += nonzeros
         end
