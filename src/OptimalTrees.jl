@@ -1,4 +1,5 @@
 module OptimalTrees
+    using Clustering
     using DataFrames
     using DocStringExtensions
     using JuMP
