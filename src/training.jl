@@ -15,15 +15,13 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     lfs = [nd for nd in nds if is_leaf(nd)]
     nd_idxs = getproperty.(nds, :idx) # Node indices
     lf_idxs = getproperty.(lfs, :idx) # Leaf indices
-    sp_idxs = [idx for idx in nd_idxs if idx ∉ lf_idxs]
+    sp_idxs = [idx for idx in nd_idxs if idx ∉ lf_idxs] # Split indices
     min_points = get_param(mt, :minbucket)
     if !isa(min_points, Int) && 0 <= min_points <= 1
         min_points = Int(ceil(min_points * n_samples))
     else
         throw(ErrorException("Minbucket parameter must be between 0-1 or an integer!"))
     end
-    mt.classes = sort(unique(Y)) # The potential classes are sorted. 
-    k = length(mt.classes)
 
     @variable(mt.model, -1 <= a[sp_idxs, 1:n_vars] <= 1)
     @variable(mt.model, 0 <= abar[sp_idxs, 1:n_vars])
@@ -45,32 +43,9 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     @variable(mt.model, z[1:n_samples, lf_idxs], Bin)
     @constraint(mt.model, [i=1:n_samples], sum(z[i, :]) == 1)
 
-    # Making sure that variables are properly binned. 
-    @variable(mt.model, ckt[1:k, lf_idxs], Bin)  # Class at leaf
+    # Points in leaves
     @variable(mt.model, Nt[lf_idxs] >= 0)       # Total number of points at leaf
     @variable(mt.model, lt[lf_idxs], Bin)       # Whether or not a leaf is occupied
-    @variable(mt.model, Nkt[1:k, lf_idxs] >= 0) # Number of points of at leaf with class k
-
-    @constraint(mt.model, [i = lf_idxs], Nt[i] == sum(z[:, i])) # Counting number of points in a leaf. 
-    @constraint(mt.model, [i = lf_idxs], sum(ckt[:, i]) == lt[i]) # Making sure a class is only assigned if leaf is occupied.
-    for kn = 1:k
-        # Number of values of each class
-        @constraint(mt.model, [i = lf_idxs], Nkt[kn, i] == 
-                    sum(z[l, i] for l = 1:n_samples if Y[l] == mt.classes[kn]))
-    end
-
-    # Loss function
-    @variable(mt.model, Lt[lf_idxs] >= 0)
-    @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] >= Nt[i] - Nkt[j, i] - n_samples * (1-ckt[j,i]))
-    @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] <= Nt[i] - Nkt[j, i] + n_samples * ckt[j,i])
-
-    @constraint(mt.model, sum(abar[mt.root.idx, :]) <= d[mt.root.idx])
-    for nd in nds
-        if !is_leaf(nd) && !isnothing(nd.parent)
-            @constraint(mt.model, d[nd.idx] <= d[nd.parent.idx])
-            @constraint(mt.model, sum(abar[nd.idx, :]) <= d[nd.idx])
-        end
-    end
 
     mu = get_param(mt, :hypertol) # hyperplane separation tolerance
     for lf in lfs
@@ -92,10 +67,68 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         end
     end
 
-    # Objective function: misclassification error + complexity (depth * label cost).
-    # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
-    @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * 
-            (sum(depth(nd)*(sum(s[nd.idx,:]) + d[nd.idx]) for nd in nds if !is_leaf(nd)))        )
+    if get_param(mt, :regression) # REGRESSION
+        M = maximum(Y) - minimum(Y) # TODO: FIX! This doesn't work for all cases.
+        Mr = 1e5                    # TODO: FIX! This doesn't work for all cases.
+        @variable(mt.model, beta[lf_idxs, 1:n_vars])
+        @variable(mt.model, beta0[lf_idxs])
+        @variable(mt.model, r[lf_idxs, 1:n_vars], Bin)
+        # @variable(mt.model, r[lf_idxs, 1:n_vars])
+        @variable(mt.model, f[1:n_samples])
+        @variable(mt.model, Nkt[lf_idxs])
+        @variable(mt.model, Lt[1:n_samples] >= 0) # Loss variable 
+
+        @constraint(mt.model, [i = lf_idxs, j = 1:n_vars], 
+            beta[i,j] .<= Mr * r[i,j])
+
+        # Predictions
+        @constraint(mt.model, [i = 1:n_samples, j = lf_idxs],
+            -M * (1 - z[i,j]) <= f[i] - (sum(beta[j,:] .* X[i,:]) + beta0[j]))
+        @constraint(mt.model, [i = 1:n_samples, j = lf_idxs],
+            f[i] - (sum(beta[j,:] .* X[i,:]) + beta0[j]) <= M * (1 - z[i,j]))
+
+        # Loss function
+        @constraint(mt.model, Lt .>= f - Y)
+        @constraint(mt.model, Lt .>= -(f - Y))
+
+        # Objective function: mean absolute error + complexity [cp * (depth * label cost + regression cost)].
+        # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
+        @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * 
+        (sum(depth(nd)*(sum(s[nd.idx,:]) + d[nd.idx]) for nd in nds if !is_leaf(nd)) + 
+         sum(r)
+         ))
+    else # CLASSIFICATION
+        mt.classes = sort(unique(Y)) # The potential classes are sorted.
+        k = length(mt.classes) 
+        # Making sure that variables are properly binned. 
+        @variable(mt.model, ckt[1:k, lf_idxs], Bin)  # Class at leaf
+        @variable(mt.model, Nkt[1:k, lf_idxs] >= 0) # Number of points of at leaf with class k
+        @variable(mt.model, Lt[lf_idxs] >= 0)       # Loss variable 
+
+        @constraint(mt.model, [i = lf_idxs], Nt[i] == sum(z[:, i])) # Counting number of points in a leaf. 
+        @constraint(mt.model, [i = lf_idxs], sum(ckt[:, i]) == lt[i]) # Making sure a class is only assigned if leaf is occupied.
+        for kn = 1:k
+            # Number of values of each class
+            @constraint(mt.model, [i = lf_idxs], Nkt[kn, i] == 
+                        sum(z[l, i] for l = 1:n_samples if Y[l] == mt.classes[kn]))
+        end
+        # Loss function
+        @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] >= Nt[i] - Nkt[j, i] - n_samples * (1-ckt[j,i]))
+        @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] <= Nt[i] - Nkt[j, i] + n_samples * ckt[j,i])
+
+        @constraint(mt.model, sum(abar[mt.root.idx, :]) <= d[mt.root.idx])
+        for nd in nds
+            if !is_leaf(nd) && !isnothing(nd.parent)
+                @constraint(mt.model, d[nd.idx] <= d[nd.parent.idx])
+                @constraint(mt.model, sum(abar[nd.idx, :]) <= d[nd.idx])
+            end
+        end
+
+        # Objective function: misclassification error + complexity (depth * label cost).
+        # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
+        @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * 
+        (sum(depth(nd)*(sum(s[nd.idx,:]) + d[nd.idx]) for nd in nds if !is_leaf(nd))))
+    end
     return
 end
 
