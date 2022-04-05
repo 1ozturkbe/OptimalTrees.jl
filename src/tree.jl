@@ -7,7 +7,8 @@ function MIOTree_defaults(kwargs...)
     d = Dict(:max_depth => 5,
         :cp => 1e-6,
         :hypertol => 0.005, # hyperplane separation tolerance
-        :minbucket => 0.01)
+        :minbucket => 0.01, 
+        :regression => false)
     if !isempty(kwargs)
         for (key, value) in kwargs
             set_param(d, key, value)
@@ -98,18 +99,34 @@ end
 """ Makes predictions using a tree, based on data X. """
 function predict(mt::MIOTree, X::Matrix)
     vals = [] # TODO: initialize empty array instead, based on types of labels in MIOTree. 
-    for i = 1:size(X, 1)
-        row = X[i,:]
-        nd = mt.root
-        while !is_leaf(nd)
-            lhs = sum(nd.a .* row)
-            if lhs ≤ nd.b
-                nd = nd.left
-            else
-                nd = nd.right
+    if get_param(mt, :regression)
+        for i = 1:size(X, 1)
+            row = X[i,:]
+            nd = mt.root
+            while !is_leaf(nd)
+                lhs = sum(nd.a .* row)
+                if lhs ≤ nd.b
+                    nd = nd.left
+                else
+                    nd = nd.right
+                end
             end
+            push!(vals, nd.label[1] + sum(nd.label[2] .* row))
         end
-        push!(vals, nd.label)
+    else
+        for i = 1:size(X, 1)
+            row = X[i,:]
+            nd = mt.root
+            while !is_leaf(nd)
+                lhs = sum(nd.a .* row)
+                if lhs ≤ nd.b
+                    nd = nd.left
+                else
+                    nd = nd.right
+                end
+            end
+            push!(vals, nd.label)
+        end
     end
     return vals
 end
@@ -122,18 +139,17 @@ apply(mt::MIOTree, X::DataFrame) = apply(mt, Matrix(X))
     $(TYPEDSIGNATURES)
 
 Returns the prediction accuracy of MIOTree. 
+For classification: misclassification error. 
+For regression: mean absolute error. 
 """
-function score(mt::MIOTree)
-    if JuMP.termination_status(mt.model) == MOI.OPTIMIZE_NOT_CALLED
-        throw(ErrorException("`score` must be called with X, Y data if the MIOTree has not been optimized."))
-    else
-        return sum(JuMP.getvalue.(mt.model[:Lt]))/size(mt.model[:z],1)
-    end
-end
 
 function score(mt::MIOTree, X, Y)
     preds = predict(mt, X)
-    return sum(preds .== Y)/length(Y)
+    if get_param(mt, :regression)
+        return sum(abs.(preds .- Y))/length(Y)
+    else
+        return sum(preds .== Y)/length(Y)
+    end
 end
 
 """
@@ -144,8 +160,8 @@ Returns the number of nonzero hyperplane coefficients of the MIOTree.
 function complexity(mt::MIOTree)
     scor = 0
     for node in allnodes(mt)
-        if !is_leaf(node)
-            nonzeros = count(node.a .!= 0)
+        if !is_leaf(node) && !isnothing(node.a)
+            nonzeros = length(node.a) - sum(isapprox.(node.a, zeros(length(node.a))))
             scor += nonzeros
         end
     end
@@ -180,12 +196,20 @@ function populate_nodes!(mt::MIOTree)
             end
         end
     end
-    for lf in allleaves(mt) # Then populate the class values...
-        class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-4) for i = 1:length(mt.classes)]
-        if sum(class_values) == 1
-            lf.label = mt.classes[findall(class_values)[1]]
-        elseif sum(class_values) > 1
-            throw(ErrorException("Multiple classes assigned to node $(lf.idx)."))
+    if get_param(mt, :regression)
+        for lf in allleaves(mt)
+            regr_coeffs = getvalue.(m[:beta][lf.idx, :])
+            regr_const = getvalue(m[:beta0][lf.idx])
+            set_classification_label!(lf, (regr_const, regr_coeffs))
+        end
+    else
+        for lf in allleaves(mt) # Then populate the class values...
+            class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-4) for i = 1:length(mt.classes)]
+            if sum(class_values) == 1
+                set_classification_label!(lf, mt.classes[findall(class_values)[1]])
+            elseif sum(class_values) > 1
+                throw(ErrorException("Multiple classes assigned to node $(lf.idx)."))
+            end
         end
     end
     return

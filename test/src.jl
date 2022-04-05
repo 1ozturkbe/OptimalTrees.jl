@@ -41,11 +41,11 @@ function test_miotree()
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
     @test sum(!isnothing(node.a) for node in allnodes(mt)) == 2^md-1 - sum(all(isapprox.(as[i,:], 0, atol = 1e-10)) for i = 1:2^md-1)
+    @test OT.complexity(mt) == sum(as .!= 0)
     prune!(mt)
     @test check_if_trained(mt)
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
     @test all(getproperty.(apply(mt, X), :label) .== predict(mt, X))
-    @test complexity(mt) == sum(as .!= 0)
 
     # # Plotting results for debugging
     # using Plots
@@ -127,6 +127,33 @@ function test_sequential()
     @test true
 end
 
+function test_regression()
+    feature_names = MLDatasets.BostonHousing.feature_names()
+    n_samples = 10
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
+    mt = MIOTree(SOLVER_SILENT, max_depth = 1, regression = true)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X, Y)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test check_if_trained(mt)
+    @test score(mt, X, Y) <= 1e-10
+    
+    # Upping number of samples, and warmstarting
+    n_samples = 20
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
+    clean_model!(mt)
+    generate_MIO_model(mt, X, Y)
+    warmstart(mt)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test check_if_trained(mt)
+    @test score(mt, X, Y) <= 2.5
+end
 
 test_binarynode()
 
@@ -136,9 +163,4 @@ test_hyperplanecart()
 
 test_sequential()
 
-# using MLDatasets: BostonHousing
-# feature_names = BostonHousing.feature_names()
-# X = Matrix(transpose(BostonHousing.features()))
-# Y = Array(transpose(BostonHousing.targets()))
-# mt = MIOTree(SOLVER_SILENT)
-# hyperplane_cart(mt, X, Y)
+test_regression()
