@@ -46,6 +46,7 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
     # Points in leaves
     @variable(mt.model, Nt[lf_idxs] >= 0)       # Total number of points at leaf
     @variable(mt.model, lt[lf_idxs], Bin)       # Whether or not a leaf is occupied
+    @constraint(mt.model, [i = lf_idxs], Nt[i] == sum(z[:, i])) # Counting number of points in a leaf. 
 
     mu = get_param(mt, :hypertol) # hyperplane separation tolerance
     for lf in lfs
@@ -67,19 +68,29 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         end
     end
 
+    # Enforcing hierarchy of splits
+    @constraint(mt.model, sum(abar[mt.root.idx, :]) <= d[mt.root.idx])
+    for nd in nds
+        if !is_leaf(nd) && !isnothing(nd.parent)
+            @constraint(mt.model, d[nd.idx] <= d[nd.parent.idx])
+            @constraint(mt.model, sum(abar[nd.idx, :]) <= d[nd.idx])
+        end
+    end
+
     if get_param(mt, :regression) # REGRESSION
         M = maximum(Y) - minimum(Y) # TODO: FIX! This doesn't work for all cases.
-        Mr = 1e5                    # TODO: FIX! This doesn't work for all cases.
+        Mr = 1e3                    # TODO: FIX! This doesn't work for all cases.
         @variable(mt.model, beta[lf_idxs, 1:n_vars])
         @variable(mt.model, beta0[lf_idxs])
         @variable(mt.model, r[lf_idxs, 1:n_vars], Bin)
-        # @variable(mt.model, r[lf_idxs, 1:n_vars])
         @variable(mt.model, f[1:n_samples])
         @variable(mt.model, Nkt[lf_idxs])
         @variable(mt.model, Lt[1:n_samples] >= 0) # Loss variable 
 
         @constraint(mt.model, [i = lf_idxs, j = 1:n_vars], 
             beta[i,j] .<= Mr * r[i,j])
+        @constraint(mt.model, [i = lf_idxs, j = 1:n_vars], 
+            beta[i,j] .<= Mr * lt[i])
 
         # Predictions
         @constraint(mt.model, [i = 1:n_samples, j = lf_idxs],
@@ -105,7 +116,6 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         @variable(mt.model, Nkt[1:k, lf_idxs] >= 0) # Number of points of at leaf with class k
         @variable(mt.model, Lt[lf_idxs] >= 0)       # Loss variable 
 
-        @constraint(mt.model, [i = lf_idxs], Nt[i] == sum(z[:, i])) # Counting number of points in a leaf. 
         @constraint(mt.model, [i = lf_idxs], sum(ckt[:, i]) == lt[i]) # Making sure a class is only assigned if leaf is occupied.
         for kn = 1:k
             # Number of values of each class
@@ -115,14 +125,6 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         # Loss function
         @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] >= Nt[i] - Nkt[j, i] - n_samples * (1-ckt[j,i]))
         @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] <= Nt[i] - Nkt[j, i] + n_samples * ckt[j,i])
-
-        @constraint(mt.model, sum(abar[mt.root.idx, :]) <= d[mt.root.idx])
-        for nd in nds
-            if !is_leaf(nd) && !isnothing(nd.parent)
-                @constraint(mt.model, d[nd.idx] <= d[nd.parent.idx])
-                @constraint(mt.model, sum(abar[nd.idx, :]) <= d[nd.idx])
-            end
-        end
 
         # Objective function: misclassification error + complexity (depth * label cost).
         # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
@@ -255,18 +257,30 @@ end
 """ Warmstarts an MIOTree model using the last solution stored in its nodes. """
 function warmstart(mt::MIOTree)
     m = mt.model
-    for nd in allnodes(mt)
-        if is_leaf(nd) && !isnothing(nd.label)
-            for i = 1:length(mt.classes)
-                if mt.classes[i] == nd.label
-                    JuMP.set_start_value(m[:ckt][i, nd.idx], 1)
-                else
-                    JuMP.set_start_value(m[:ckt][i, nd.idx], 0)
-                end
+    if get_param(mt, :regression)
+        for nd in allnodes(mt)
+            if is_leaf(nd) && !isnothing(nd.label)
+                JuMP.set_start_value(m[:beta0][nd.idx], nd.label[1])
+                JuMP.set_start_value.(m[:beta][nd.idx, :], nd.label[2])
+            elseif !isnothing(nd.a)
+                JuMP.set_start_value.(m[:a][nd.idx, :], nd.a)
+                JuMP.set_start_value(m[:b][nd.idx], nd.b)
             end
-        elseif !isnothing(nd.a)
-            JuMP.set_start_value.(m[:a][nd.idx, :], nd.a)
-            JuMP.set_start_value(m[:b][nd.idx], nd.b)
+        end
+    else
+        for nd in allnodes(mt)
+            if is_leaf(nd) && !isnothing(nd.label)
+                for i = 1:length(mt.classes)
+                    if mt.classes[i] == nd.label
+                        JuMP.set_start_value(m[:ckt][i, nd.idx], 1)
+                    else
+                        JuMP.set_start_value(m[:ckt][i, nd.idx], 0)
+                    end
+                end
+            elseif !isnothing(nd.a)
+                JuMP.set_start_value.(m[:a][nd.idx, :], nd.a)
+                JuMP.set_start_value(m[:b][nd.idx], nd.b)
+            end
         end
     end
     return
