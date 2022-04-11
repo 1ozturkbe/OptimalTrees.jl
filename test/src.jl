@@ -163,12 +163,44 @@ function test_regression()
     @test score(mt, X, Y) <= 1
 end
 
-test_binarynode()
+# test_binarynode()
 
-test_miotree()
+# test_miotree()
 
-test_hyperplanecart()
+# test_hyperplanecart()
 
-test_sequential()
+# test_sequential()
 
-test_regression()
+# test_regression()
+
+@info "Testing ensemble regression..."
+feature_names = MLDatasets.BostonHousing.feature_names()
+X = Matrix(transpose(MLDatasets.BostonHousing.features()))
+Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+
+te = TreeEnsemble(Gurobi.Optimizer; regression = true, max_depth = 2)
+plant_trees(te, 15)
+generate_binary_tree.(te.trees)
+# pop!(te.trees)
+train_ensemble(te, X, Y)
+populate_nodes!.(te.trees)
+prune!.(te.trees)
+# @test all(check_if_trained.(te.trees))
+
+function weigh_trees(te, X, Y)
+    m = JuMP.Model(te.solver)
+    @variable(m, 0 <= w[1:length(te.trees)] <= 1)
+    @variable(m, preds[1:length(Y), 1:length(te.trees)])
+    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
+    vals = []
+    return
+end
+
+
+for mt in te.trees
+    println("Tree " * string(mt.idx))
+    for nd in allnodes(mt)
+        (is_leaf(nd) && isnothing(nd.label)) && println("Leaf " * string(nd.idxs))
+        (!is_leaf(nd) && (isnothing(nd.a) || isnothing(nd.b))) && println("Split " * string(nd.idx))
+    end
+end

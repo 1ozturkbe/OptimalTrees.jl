@@ -13,16 +13,17 @@ module OptimalTrees
     include("tree.jl")
     include("tree_utils.jl")
     include("training.jl")
+    include("ensemble.jl")
 
     const MOI = MathOptInterface
     const OPTIMALTREES_ROOT = dirname(dirname(@__FILE__))
     const DATA_DIR = OPTIMALTREES_ROOT * "\\data\\"
 
     # Structs
-    export MIOTree, BinaryNode, 
+    export MIOTree, BinaryNode, TreeEnsemble,
 
     # Tree building
-        MIOTree_defaults, MIOTree,
+        MIOTree_defaults,
         leftchild, rightchild, children, 
         printnode, generate_binary_tree, 
         delete_children!, 
@@ -57,6 +58,10 @@ module OptimalTrees
         normalize,
         allnodes, allleaves,
         clean_model!,
+
+    # Tree ensembles
+        TreeEnsemble_defaults, train_ensemble, 
+        plant_trees, 
 
     # Debugging
         debug_if_trained
