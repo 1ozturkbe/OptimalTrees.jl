@@ -1,5 +1,6 @@
 """ Tests the functionalities of BinaryNode. """
 function test_binarynode()
+    @info "Testing BinaryNode..."
     bn = BinaryNode(1)
     leftchild(bn, BinaryNode(2))
     rightchild(bn, BinaryNode(3))
@@ -17,6 +18,7 @@ end
 
 """ Tests full MIO solution functionalities of MIOTree. """
 function test_miotree()
+    @info "Testing MIOTree..."
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
@@ -76,6 +78,7 @@ function test_miotree()
 end
 
 function test_hyperplanecart()
+    @info "Testing hyperplane CART..."
     mt = MIOTree(SOLVER_SILENT, max_depth = 5)
     df = binarize(load_irisdata())
     X = Matrix(df[:,1:4])
@@ -118,7 +121,8 @@ function test_hyperplanecart()
 end
 
 function test_sequential()
-    mt = MIOTree(SOLVER_SILENT; max_depth = 3, minbucket = 0.03)
+    @info "Testing sequential training..."
+    mt = MIOTree(SOLVER_SILENT; max_depth = 2, minbucket = 0.03)
     df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
@@ -128,21 +132,25 @@ function test_sequential()
 end
 
 function test_regression()
+    @info "Testing regression..."
     feature_names = MLDatasets.BostonHousing.feature_names()
-    n_samples = 10
-    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
-    Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
-    mt = MIOTree(SOLVER_SILENT, max_depth = 1, regression = true)
+    n_samples = 20
+    X_all = Matrix(transpose(MLDatasets.BostonHousing.features()))
+    Y_all = Array(transpose(MLDatasets.BostonHousing.targets()))
+    X = X_all[1:n_samples, :]
+    Y = Y_all[1:n_samples, :]
+    mt = MIOTree(SOLVER_SILENT, max_depth = 2, regression = true)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
     optimize!(mt)
     populate_nodes!(mt)
     prune!(mt)
+
     @test check_if_trained(mt)
-    @test score(mt, X, Y) <= 1e-10
+    @test score(mt, X, Y) <= 1
     
     # Upping number of samples, and warmstarting
-    n_samples = 20
+    n_samples = 30
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
     Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
     clean_model!(mt)
@@ -152,7 +160,7 @@ function test_regression()
     populate_nodes!(mt)
     prune!(mt)
     @test check_if_trained(mt)
-    @test score(mt, X, Y) <= 2.5
+    @test score(mt, X, Y) <= 1
 end
 
 test_binarynode()
