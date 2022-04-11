@@ -102,6 +102,11 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         @constraint(mt.model, Lt .>= f - Y)
         @constraint(mt.model, Lt .>= -(f - Y))
 
+        # Additional split hierarchy constraint
+        for nd in allleaves(mt)
+            @constraint(mt.model, r[nd.idx,:] .<= d[nd.parent.idx])
+        end
+
         # Objective function: mean absolute error + complexity [cp * (depth * label cost + regression cost)].
         # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
         @objective(mt.model, Min, 1/n_samples * sum(Lt) + get_param(mt, :cp) * 
