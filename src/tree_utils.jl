@@ -42,4 +42,15 @@ function trust_region_data(mt::MIOTree)
     return upperDict, lowerDict
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Returns the regression weights from an OptimalTreeLearner by leaf, 
+i.e. Dict[leaf_number] containing [B0, B].
+"""
+function pwl_constraint_data(lnr::MIOTree, vks)
+    @assert get_param(lnr, :regression)
+    return Dict(leaf.idx => leaf.label for leaf in find_leaves(lnr))
+end
+
 

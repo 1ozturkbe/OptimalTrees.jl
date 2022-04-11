@@ -47,13 +47,14 @@ module OptimalTrees
 
     # Tree utilities
         find_leaves, check_if_trained, 
-        trust_region_data,
+        trust_region_data, pwl_constraint_data,
 
     # Scoring functions
         score,
 
     # Helper functions
         set_param, get_param,
+        normalize,
         allnodes, allleaves,
         clean_model!,
 
