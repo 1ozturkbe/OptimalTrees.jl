@@ -127,6 +127,15 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
             @constraint(mt.model, [i = lf_idxs], Nkt[kn, i] == 
                         sum(z[l, i] for l = 1:n_samples if Y[l] == mt.classes[kn]))
         end
+
+        # Making sure there are enough leaf labels.
+        for node in nds
+            if !is_leaf(node)
+                leaf_offspring_idxs = [offspr.idx for offspr in alloffspring(node) if is_leaf(offspr)]
+                @constraint(mt.model, sum(ckt[:, leaf_offspring_idxs]) >= 2*d[node.idx])
+            end
+        end
+
         # Loss function
         @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] >= Nt[i] - Nkt[j, i] - n_samples * (1-ckt[j,i]))
         @constraint(mt.model, [i = lf_idxs, j = 1:k], Lt[i] <= Nt[i] - Nkt[j, i] + n_samples * ckt[j,i])
