@@ -41,7 +41,8 @@ module OptimalTrees
         apply, predict,
 
     # Tree training
-        SVM, hyperplane_cart,
+        SVM, ridge_regress, 
+        hyperplane_cart,
         warmstart, generate_MIO_model, 
         sequential_train!,
 

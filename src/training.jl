@@ -166,11 +166,22 @@ function SVM(X::Matrix, Y::Array, solver, C = 0.01)
     @variable(m, b)
     @variable(m, ζ[1:n_samples] ≥ 0) # variable allocation 
     @constraint(m, [i = 1:n_samples], Y_san[i] * (sum(a.*X[i, :]) - b) ≥ 1 - ζ[i])
-    C = 100
     @objective(m, Min, 0.5*C*sum(a.^2) + sum(ζ))
     optimize!(m)
     return getvalue.(a), getvalue(b)
 end 
+
+""" 
+Performs ridge regression on data. Best used after X  and Y are normalized.  
+"""
+function ridge_regress(X::Matrix, Y::Array, solver; rho::Float64 = 0.005, weights = ones(length(Y)))
+    m = JuMP.Model(solver)
+    @variable(m, x[1:size(X,2)])
+    @variable(m, offset)
+    @objective(m, Min, sum((Y - X*x .- offset).^2) + rho*sum(x.^2))
+    optimize!(m)
+    return getvalue(offset), getvalue.(x)
+end
 
 """
     $(TYPEDSIGNATURES)
