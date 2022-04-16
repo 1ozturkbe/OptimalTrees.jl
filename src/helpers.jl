@@ -10,7 +10,11 @@ function set_param(gm::Dict, key::Symbol, val, checks = true)
     end
 end
 
-""" Gets parameters within Dict. """
+""" 
+    $(TYPEDSIGNATURES)
+
+Gets parameters within Dict. 
+"""
 function get_param(gm::Dict, key::Symbol)
     if haskey(gm, key)
         return gm[key]
@@ -19,7 +23,11 @@ function get_param(gm::Dict, key::Symbol)
     end
 end
 
-""" Normalizes a given chunk of data by column. """
+""" 
+    $(TYPEDSIGNATURES)
+
+Normalizes a given chunk of data by column. 
+"""
 function normalize(X::Matrix)
     bounds = [(minimum(X[:,i]), maximum(X[:,i])) for i = 1:size(X, 2)]
     X_norm = zeros(size(X))
@@ -27,4 +35,17 @@ function normalize(X::Matrix)
         X_norm[:,i] = (X[:,i] .- bounds[i][1]) ./ (bounds[i][2] - bounds[i][1])
     end
     return X_norm, bounds
+end
+
+""" 
+    $(TYPEDSIGNATURES)
+
+De-normalizes a given chunk of data by column. 
+"""
+function denormalize(X::Matrix, bounds::Vector)
+    X_denorm = zeros(size(X))
+    for i = 1:size(X,2)
+        X_denorm[:,i] = X[:,i] .* (bounds[i][2] - bounds[i][1]) .+ bounds[i][1]
+    end
+    return X_denorm
 end
