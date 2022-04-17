@@ -7,6 +7,7 @@ function MIOTree_defaults(kwargs...)
     d = Dict(:max_depth => 5,
         :cp => 1e-6,
         :hypertol => 0.005, # hyperplane separation tolerance
+        :regrtol => 0.001,
         :minbucket => 0.01, 
         :regression => false)
     if !isempty(kwargs)

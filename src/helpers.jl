@@ -28,7 +28,7 @@ end
 
 Normalizes a given chunk of data by column. 
 """
-function normalize(X::Matrix)
+function normalize(X)
     bounds = [(minimum(X[:,i]), maximum(X[:,i])) for i = 1:size(X, 2)]
     X_norm = zeros(size(X))
     for i = 1:size(X,2)
@@ -42,7 +42,7 @@ end
 
 De-normalizes a given chunk of data by column. 
 """
-function denormalize(X::Matrix, bounds::Vector)
+function denormalize(X, bounds::Vector)
     X_denorm = zeros(size(X))
     for i = 1:size(X,2)
         X_denorm[:,i] = X[:,i] .* (bounds[i][2] - bounds[i][1]) .+ bounds[i][1]
