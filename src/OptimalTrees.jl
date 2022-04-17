@@ -56,6 +56,7 @@ module OptimalTrees
     # Helper functions
         set_param, get_param,
         normalize, denormalize,
+        denormalize_regressor,
         allnodes, allleaves,
         clean_model!,
 

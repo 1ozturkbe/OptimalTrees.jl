@@ -49,3 +49,14 @@ function denormalize(X, bounds::Vector)
     end
     return X_denorm
 end
+
+""" 
+    $(TYPEDSIGNATURES)
+
+Denormalizes a regressor using provided bounds. 
+"""
+function denormalize_regressor(β0::Real, β::Vector, X_max::Vector, X_min::Vector, Y_max::Real, Y_min::Real)
+    β_denorm = β ./ (X_max - X_min) * (Y_max - Y_min)
+    β0_denorm = (sum(-β.* (X_min ./ (X_max - X_min))) + β0) * (Y_max - Y_min) + Y_min  
+    return β0_denorm, β_denorm
+end
