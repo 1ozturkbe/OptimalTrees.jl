@@ -25,6 +25,22 @@ function test_data()
     @test all(X_norm .>= 0) && all(X_norm .<= 1)
     X_denorm = denormalize(X_norm, bounds)
     @test all(isapprox.(X, X_denorm))
+
+    # Testing regression denormalization
+    X = 5*rand(100,3)
+    base_b = [1, -1/2, 4]
+    base_b0 = 3
+    Y = X * base_b .+ base_b0
+    X_norm, X_bounds = normalize(X)
+    X_max = [maximum(bd) for bd in X_bounds]
+    X_min = [minimum(bd) for bd in X_bounds]
+    Y_norm, Y_bounds = normalize(Y)
+    Y_max = maximum(Y_bounds[1])
+    Y_min = minimum(Y_bounds[1])
+    b0_norm, b_norm = ridge_regress(X_norm, Y_norm, mt.solver)
+    b0, b = denormalize_regressor(b0_norm, b_norm, X_max, X_min, Y_max, Y_min)
+    @test isapprox(b0, base_b0, atol=1e-2)
+    @test all(isapprox.(b, base_b, atol = 1e-2))
 end
 
 """ Tests full MIO solution functionalities of MIOTree. """
@@ -201,7 +217,11 @@ n_samples = 30
 X = Matrix(transpose(MLDatasets.BostonHousing.features()))
 Y = Array(transpose(MLDatasets.BostonHousing.targets()))
 X_norm, X_bounds = normalize(X)
+X_max = [maximum(bd) for bd in X_bounds]
+X_min = [minimum(bd) for bd in X_bounds]
 Y_norm, Y_bounds = normalize(Y)
+Y_max = maximum(Y_bounds[1])
+Y_min = minimum(Y_bounds[1])
 
 # mt = MIOTree(SOLVER_SILENT, max_depth = 1, regression = true)
 # generate_binary_tree(mt)
@@ -216,11 +236,10 @@ minpoints = ceil(n_samples * get_param(mt, :minbucket))
 max_depth = get_param(mt, :max_depth)
 regrtol = get_param(mt, :regrtol)
 valid_leaves = [mt.root] # Stores leaves ready for SVM cuts. 
-ct = 0
+ct = 1
 point_idxs = Dict(mt.root.idx => collect(1:n_samples))
 β0, β = ridge_regress(X_norm, Y_norm, mt.solver)
-β0 = denormalize([β0], Y_bounds)[1]
-
+β0, β = denormalize_regressor(β0, β, X_max, X_min, Y_max, Y_min)
 set_classification_label!(mt.root, (β0, β))
 
 while !isempty(valid_leaves)
@@ -236,6 +255,16 @@ while !isempty(valid_leaves)
 
     left_idxs = findall(x -> x <= 0, errors)
     right_idxs = findall(x -> x > 0, errors)
+
+    # Optimal split tree
+    # mtos = MIOTree(Gurobi.Optimizer, max_depth = 1)
+    # generate_binary_tree(mtos)
+    # generate_MIO_model(mtos, X_norm[point_idxs[leaf.idx],:], Y_norm[point_idxs[leaf.idx]])
+    # @constraint(mtos.model, sum(β[i] * mtos.model[:a][1,i] for i=1:length(β))  == 0) # Orthogonality constraint
+    # optimize!(mtos)
+    # populate_nodes!(mtos)
+
+
 
     # a, b = SVM(X_norm[point_idxs[leaf.idx], :],
     #     Array(split_errors[point_idxs[leaf.idx]]), mt.solver)
@@ -259,14 +288,14 @@ while !isempty(valid_leaves)
     point_idxs[leaf.left.idx] = point_idxs[leaf.idx][left_idxs]
     β0, β = ridge_regress(X_norm[point_idxs[leaf.left.idx],:], 
         Y_norm[point_idxs[leaf.left.idx]], mt.solver)
-    β0 = denormalize([β0], Y_bounds)[1]
+    β0, β = denormalize_regressor(β0, β, X_max, X_min, Y_max, Y_min)
     set_classification_label!(leaf.left, (β0, β))
 
     # Checking and labeling right child
-    point_idxs[leaf.right.idx] = point_idxs[leaf.idx][right_idxs]
+    point_idxs[leaf.right.idx] =  point_idxs[leaf.idx][right_idxs]
     β0, β = ridge_regress(X_norm[point_idxs[leaf.right.idx],:], 
         Y_norm[point_idxs[leaf.right.idx]], mt.solver)
-    β0 = denormalize([β0], Y_bounds)[1]
+    β0, β = denormalize_regressor(β0, β, X_max, X_min, Y_max, Y_min)
     set_classification_label!(leaf.right, (β0, β))
     
     # Pruning if necessary, 
@@ -279,23 +308,4 @@ while !isempty(valid_leaves)
     end
 end
 
-df = DataFrame(pred = predict(mt, X), act = vec(Y))
-
-X = 5*rand(100,3)
-base_b = [1, -1/2, 4]
-base_b0 = 3
-Y = X * base_b .+ base_b0
-
-X_norm, X_bounds = normalize(X)
-X_max_bounds = [maximum(bd) for bd in X_bounds]
-X_min_bounds = [minimum(bd) for bd in X_bounds]
-Y_norm, Y_bounds = normalize(Y)
-Y_max_bound = maximum(Y_bounds[1])
-Y_min_bound = minimum(Y_bounds[1])
-b0_norm, b_norm = ridge_regress(X_norm, Y_norm, mt.solver)
-
-b_denorm = b_norm ./ (X_max_bounds - X_min_bounds) * (Y_max_bound - Y_min_bound)
-b0_denorm = (sum(-b_norm .* (X_min_bounds ./ (X_max_bounds - X_min_bounds))) + b0_norm) * (Y_max_bound - Y_min_bound) + Y_min_bound
-
-pred = X * b_denorm .+ b0_denorm
-df = DataFrame(pred = pred, act = vec(Y))
+df = DataFrame(pred = predict(mt, X), act = vec(Y)) 
