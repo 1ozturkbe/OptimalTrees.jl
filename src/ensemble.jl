@@ -59,8 +59,24 @@ function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array)
         end
         generate_MIO_model(tree, X[idxs,:], Y[idxs])
         optimize!(tree)
-        populate_nodes!(tree)
-        prune!(tree)
     end
     return
+end
+
+function predict(te::TreeEnsemble, X)
+    evals = hcat([predict(mt, X) for mt in te.trees]...)
+    if get_param(mt, :regression)
+        return evals * te.weights
+    else
+        return (evals * te.weights .>= 0)
+    end
+end
+
+function score(te::TreeEnsemble, X, Y)
+    preds = predict(te, X)
+    if get_param(mt, :regression)
+        return sum(abs.(preds .- Y))/length(Y)
+    else
+        return sum(preds .== Y)/length(Y)
+    end
 end
