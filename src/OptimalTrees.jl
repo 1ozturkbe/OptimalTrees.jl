@@ -61,7 +61,7 @@ module OptimalTrees
 
     # Tree ensembles
         TreeEnsemble_defaults, train_ensemble, 
-        plant_trees, 
+        plant_trees, weigh_trees,
 
     # Debugging
         debug_if_trained

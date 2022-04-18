@@ -49,6 +49,7 @@ function plant_trees(te::TreeEnsemble, n_trees::Int)
     end
 end
 
+""" Trains a TreeEnsemble based on planted trees. """
 function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array)
     n_points = Int(floor(length(Y) / length(te.trees)))
     @showprogress 1 "Training ensemble of $(length(te.trees)) trees. " for i = 1:length(te.trees)
@@ -63,9 +64,22 @@ function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array)
     return
 end
 
+""" Computes the optimal weights for the TreeEnsemble. """
+function weigh_trees(te, X, Y)
+    m = JuMP.Model(te.solver)
+    @variable(m, 0 <= w[1:length(te.trees)] <= 1)
+    @constraint(m, sum(w) == 1)
+    @variable(m, preds[1:length(Y), 1:length(te.trees)])
+    evals = hcat([predict(mt, X) for mt in te.trees]...)
+    @constraint(m, preds .== evals * w)
+    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
+    optimize!(m)
+    te.weights = getvalue.(w)
+end
+
 function predict(te::TreeEnsemble, X)
     evals = hcat([predict(mt, X) for mt in te.trees]...)
-    if get_param(mt, :regression)
+    if get_param(te, :regression)
         return evals * te.weights
     else
         return (evals * te.weights .>= 0)
@@ -74,7 +88,7 @@ end
 
 function score(te::TreeEnsemble, X, Y)
     preds = predict(te, X)
-    if get_param(mt, :regression)
+    if get_param(te, :regression)
         return sum(abs.(preds .- Y))/length(Y)
     else
         return sum(preds .== Y)/length(Y)

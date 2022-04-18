@@ -25,6 +25,7 @@ function test_miotree()
     @test get_param(d, :cp) == 1e-5
     mt = MIOTree(SOLVER_SILENT; max_depth = 4, minbucket = 0.03)
     df = load_irisdata()
+    df = df[1:Int(floor(size(df, 1)/2)),:]
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 2
@@ -147,7 +148,7 @@ function test_regression()
     prune!(mt)
 
     @test check_if_trained(mt)
-    @test score(mt, X, Y) <= 1
+    score1 = score(mt, X, Y)
     
     # Upping number of samples, and warmstarting
     n_samples = 30
@@ -160,47 +161,41 @@ function test_regression()
     populate_nodes!(mt)
     prune!(mt)
     @test check_if_trained(mt)
-    @test score(mt, X, Y) <= 1
+    score2 = score(mt, X, Y)
+    @test score1 <= 5 && score2 <= 5
 end
 
-# test_binarynode()
+function test_ensemblereg()
+    @info "Testing ensemble regression..."
+    feature_names = MLDatasets.BostonHousing.feature_names()
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+    # Shuffled data
+    shuffle_idxs = shuffle(1:Int(length(Y)/2))
+    Y = Y[shuffle_idxs]
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
 
-# test_miotree()
-
-# test_hyperplanecart()
-
-# test_sequential()
-
-# test_regression()
-
-@info "Testing ensemble regression..."
-feature_names = MLDatasets.BostonHousing.feature_names()
-X = Matrix(transpose(MLDatasets.BostonHousing.features()))
-Y = Array(transpose(MLDatasets.BostonHousing.targets()))
-
-te = TreeEnsemble(Gurobi.Optimizer; regression = true, max_depth = 2)
-plant_trees(te, 15)
-generate_binary_tree.(te.trees)
-# pop!(te.trees)
-train_ensemble(te, X, Y)
-populate_nodes!.(te.trees)
-prune!.(te.trees)
-# @test all(check_if_trained.(te.trees))
-
-function weigh_trees(te, X, Y)
-    m = JuMP.Model(te.solver)
-    @variable(m, 0 <= w[1:length(te.trees)] <= 1)
-    @variable(m, preds[1:length(Y), 1:length(te.trees)])
-    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
-    vals = []
-    return
+    te = TreeEnsemble(SOLVER_SILENT; regression = true, max_depth = 1)
+    plant_trees(te, 12)
+    generate_binary_tree.(te.trees)
+    train_ensemble(te, X, Y)
+    populate_nodes!.(te.trees)
+    prune!.(te.trees)
+    @test all(check_if_trained.(te.trees))
+    weigh_trees(te, X, Y)
+    @test isapprox(sum(te.weights), 1, atol = 1e-3)
+    @test score(te, X, Y) <= 7
 end
 
+test_binarynode()
 
-for mt in te.trees
-    println("Tree " * string(mt.idx))
-    for nd in allnodes(mt)
-        (is_leaf(nd) && isnothing(nd.label)) && println("Leaf " * string(nd.idxs))
-        (!is_leaf(nd) && (isnothing(nd.a) || isnothing(nd.b))) && println("Split " * string(nd.idx))
-    end
-end
+test_miotree()
+
+test_hyperplanecart()
+
+test_sequential()
+
+test_regression()
+
+test_ensemblereg()
+
+
