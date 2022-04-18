@@ -106,6 +106,12 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
         for nd in allleaves(mt)
             @constraint(mt.model, r[nd.idx,:] .<= d[nd.parent.idx])
         end
+        for node in nds
+            if !is_leaf(node)
+                leaf_offspring_idxs = [offspr.idx for offspr in alloffspring(node) if is_leaf(offspr)]
+                @constraint(mt.model, sum(lt[leaf_offspring_idxs]) >= 2*d[node.idx])
+            end
+        end
 
         # Objective function: mean absolute error + complexity [cp * (depth * label cost + regression cost)].
         # Increasing penalty by depth to ensure that splits are created top-down and there are no discontinuities in the tree.
