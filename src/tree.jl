@@ -8,6 +8,8 @@ function MIOTree_defaults(kwargs...)
         :cp => 1e-6,
         :hypertol => 0.005, # hyperplane separation tolerance
         :minbucket => 0.01, 
+        :regression_sparsity => :all, 
+        :hyperplane_sparsity => :all, 
         :regression => false)
     if !isempty(kwargs)
         for (key, value) in kwargs
@@ -77,7 +79,11 @@ allnodes(mt::MIOTree) = [mt.root, alloffspring(mt.root)...]
 """ Returns all leaf BinaryNodes of MIOTree. """
 allleaves(mt::MIOTree) = [nd for nd in allnodes(mt) if is_leaf(nd)]
 
-"""Returns the leaf nodes in which the data X fall. """
+"""
+    $(TYPEDSIGNATURES)
+
+Returns the leaf nodes in which the data X fall. 
+"""
 function apply(mt::MIOTree, X::Matrix)
     vals = BinaryNode[] # TODO: initialize empty array instead, based on types of indices in MIOTree. 
     for i = 1:size(X, 1)
@@ -96,7 +102,11 @@ function apply(mt::MIOTree, X::Matrix)
     return vals
 end
 
-""" Makes predictions using a tree, based on data X. """
+""" 
+    $(TYPEDSIGNATURES)
+
+Makes predictions using a tree, based on data X. 
+"""
 function predict(mt::MIOTree, X::Matrix)
     vals = [] # TODO: initialize empty array instead, based on types of labels in MIOTree. 
     if get_param(mt, :regression)
@@ -131,7 +141,6 @@ function predict(mt::MIOTree, X::Matrix)
     return vals
 end
 
-""" Makes predictions based on X, using the MIOTree. """
 apply(mt::MIOTree, X::DataFrame) = apply(mt, Matrix(X))
 # TODO: improve this by making sure that the DataFrame labels are in the right order. 
 
