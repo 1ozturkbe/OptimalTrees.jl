@@ -56,7 +56,7 @@ module OptimalTrees
 
     # Helper functions
         set_param, get_param,
-        normalize,
+        normalize, pairwise_distances,
         allnodes, allleaves,
         clean_model!,
 
