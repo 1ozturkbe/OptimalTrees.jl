@@ -1,5 +1,6 @@
 """ Tests the functionalities of BinaryNode. """
 function test_binarynode()
+    @info "Testing BinaryNode..."
     bn = BinaryNode(1)
     leftchild(bn, BinaryNode(2))
     rightchild(bn, BinaryNode(3))
@@ -17,12 +18,14 @@ end
 
 """ Tests full MIO solution functionalities of MIOTree. """
 function test_miotree()
+    @info "Testing MIOTree..."
     d = MIOTree_defaults()
     d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
     mt = MIOTree(SOLVER_SILENT; max_depth = 4, minbucket = 0.03)
     df = load_irisdata()
+    df = df[1:Int(floor(size(df, 1)/2)),:]
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 2
@@ -41,11 +44,11 @@ function test_miotree()
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
     @test sum(!isnothing(node.a) for node in allnodes(mt)) == 2^md-1 - sum(all(isapprox.(as[i,:], 0, atol = 1e-10)) for i = 1:2^md-1)
+    @test OT.complexity(mt) == sum(as .!= 0)
     prune!(mt)
     @test check_if_trained(mt)
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
     @test all(getproperty.(apply(mt, X), :label) .== predict(mt, X))
-    @test complexity(mt) == sum(as .!= 0)
 
     # # Plotting results for debugging
     # using Plots
@@ -76,6 +79,7 @@ function test_miotree()
 end
 
 function test_hyperplanecart()
+    @info "Testing hyperplane CART..."
     mt = MIOTree(SOLVER_SILENT, max_depth = 5)
     df = binarize(load_irisdata())
     X = Matrix(df[:,1:4])
@@ -118,7 +122,8 @@ function test_hyperplanecart()
 end
 
 function test_sequential()
-    mt = MIOTree(SOLVER_SILENT; max_depth = 3, minbucket = 0.03)
+    @info "Testing sequential training..."
+    mt = MIOTree(SOLVER_SILENT; max_depth = 2, minbucket = 0.03)
     df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
@@ -127,6 +132,59 @@ function test_sequential()
     @test true
 end
 
+function test_regression()
+    @info "Testing regression..."
+    feature_names = MLDatasets.BostonHousing.feature_names()
+    n_samples = 20
+    X_all = Matrix(transpose(MLDatasets.BostonHousing.features()))
+    Y_all = Array(transpose(MLDatasets.BostonHousing.targets()))
+    X = X_all[1:n_samples, :]
+    Y = Y_all[1:n_samples, :]
+    mt = MIOTree(SOLVER_SILENT, max_depth = 2, regression = true)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X, Y)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+
+    @test check_if_trained(mt)
+    score1 = score(mt, X, Y)
+    
+    # Upping number of samples, and warmstarting
+    n_samples = 30
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
+    clean_model!(mt)
+    generate_MIO_model(mt, X, Y)
+    warmstart(mt)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test check_if_trained(mt)
+    score2 = score(mt, X, Y)
+    @test score1 <= 5 && score2 <= 5
+end
+
+function test_ensemblereg()
+    @info "Testing ensemble regression..."
+    feature_names = MLDatasets.BostonHousing.feature_names()
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+    # Shuffled data
+    shuffle_idxs = shuffle(1:Int(length(Y)/2))
+    Y = Y[shuffle_idxs]
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
+
+    te = TreeEnsemble(SOLVER_SILENT; regression = true, max_depth = 1)
+    plant_trees(te, 12)
+    generate_binary_tree.(te.trees)
+    train_ensemble(te, X, Y)
+    populate_nodes!.(te.trees)
+    prune!.(te.trees)
+    @test all(check_if_trained.(te.trees))
+    weigh_trees(te, X, Y)
+    @test isapprox(sum(te.weights), 1, atol = 1e-3)
+    @test score(te, X, Y) <= 7
+end
 
 test_binarynode()
 
@@ -136,9 +194,8 @@ test_hyperplanecart()
 
 test_sequential()
 
-# using MLDatasets: BostonHousing
-# feature_names = BostonHousing.feature_names()
-# X = Matrix(transpose(BostonHousing.features()))
-# Y = Array(transpose(BostonHousing.targets()))
-# mt = MIOTree(SOLVER_SILENT)
-# hyperplane_cart(mt, X, Y)
+test_regression()
+
+test_ensemblereg()
+
+
