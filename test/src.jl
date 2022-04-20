@@ -186,6 +186,39 @@ function test_ensemblereg()
     @test score(te, X, Y) <= 7
 end
 
+function test_cluster_heuristic()
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+    shuffle_idxs = shuffle(1:Int(length(Y)))
+    Y = Array(Y[shuffle_idxs])
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
+
+    X_norm, X_bounds = normalize(X)
+    Y_norm, Y_bounds = normalize(Y)
+    dists = pairwise_distances(X_norm)
+    clust = hclust(dists)
+    max_depth = 5
+    n_clust = 2^(max_depth-1)
+    idxs = cutree(clust; k = n_clust, h = max_depth)
+    cluster_bins = Dict(i => [] for i in unique(idxs))
+    [push!(cluster_bins[idxs[i]], i) for i = 1:length(idxs)]
+    subset_idxs = []
+    sample_proportion = 0.125
+    for (key, val) in cluster_bins # Picking just one-eighth of all samples in clusters
+        append!(subset_idxs, val[1:Int(ceil(sample_proportion*length(val)))])
+    end
+    @assert sample_proportion <= length(subset_idxs)/length(Y) <= 2*sample_proportion
+
+    mt = MIOTree(Gurobi.Optimizer, max_depth = max_depth)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X_norm[subset_idxs, :], Array(Y_norm .>= 0.3)[subset_idxs])
+    @objective(mt.model, Min, 1/length(subset_idxs) * sum(mt.model[:Lt])+ get_param(mt, :cp) * 
+    (sum(depth(nd)*mt.model[:d][nd.idx] for nd in allnodes(mt) if !is_leaf(nd))))
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test score(mt, X_norm, Array(Y_norm .>= 0.3)) >= 0.8
+end
+
 test_binarynode()
 
 test_miotree()
@@ -198,4 +231,4 @@ test_regression()
 
 test_ensemblereg()
 
-
+test_cluster_heuristic()
