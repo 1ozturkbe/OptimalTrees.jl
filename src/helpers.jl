@@ -54,3 +54,17 @@ function pairwise_distances(X_norm::Matrix)
     end
     return dists
 end
+
+""" Computes the mode, i.e. the most common element of an array. """
+function mode(X::Vector)
+    count_dict = Dict()
+    for i = 1:length(X)
+        if !(X[i] in keys(count_dict))
+            count_dict[X[i]] = 1
+        else
+            count_dict[X[i]] += 1
+        end
+    end
+    maxval = maximum(values(count_dict))
+    return [k for (k,v) in count_dict if v == maxval]
+end
