@@ -26,6 +26,7 @@ module OptimalTrees
     # Tree building
         MIOTree_defaults,
         leftchild, rightchild, children, 
+        get_lower_child, get_upper_child,
         printnode, generate_binary_tree, 
         delete_children!, 
         populate_nodes!, prune!, 

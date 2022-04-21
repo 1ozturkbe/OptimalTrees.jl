@@ -177,3 +177,15 @@ function set_classification_label!(bn::BinaryNode, label)
     bn.b = nothing
     return
 end
+
+""" Returns left child of BinaryNode (less than side)."""
+function get_lower_child(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get lower child of leaf node $(bn.idx).")
+    return bn.left
+end
+
+""" Returns right child of BinaryNode (greater than side)."""
+function get_upper_child(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get upper child of leaf node $(bn.idx).")
+    return bn.right
+end
