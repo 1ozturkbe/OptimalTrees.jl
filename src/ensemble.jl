@@ -50,7 +50,7 @@ function plant_trees(te::TreeEnsemble, n_trees::Int)
 end
 
 """ Trains a TreeEnsemble based on planted trees. """
-function train_ensemble(te::TreeEnsemble, fn::Function, X::Matrix, Y::Array, mt_idxs::Union{Nothing, Array} = nothing)
+function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array, mt_idxs::Union{Nothing, Array} = nothing)
     if !isnothing(mt_idxs)
         length(mt_idxs) .== length(te.trees) || throw(ErrorException("Number of sample batches must match the number of trees."))
     else
@@ -64,6 +64,12 @@ function train_ensemble(te::TreeEnsemble, fn::Function, X::Matrix, Y::Array, mt_
             push!(mt_idxs, idxs)
         end
     end
+    if !get_param(te, :regression)
+        te.classes = sort(unique(Y)) # Make sure that all trees have the same classes. 
+        for mt in te.trees
+            mt.classes = te.classes
+        end
+    end
     @showprogress 1 "Training ensemble of $(length(te.trees)) trees. " for i = 1:length(te.trees)
         tree = te.trees[i]
         idxs = mt_idxs[i]
@@ -73,30 +79,31 @@ function train_ensemble(te::TreeEnsemble, fn::Function, X::Matrix, Y::Array, mt_
     return
 end
 
-""" Computes the optimal weights for the TreeEnsemble. """
+""" Computes the optimal weights for a regressing TreeEnsemble. """
 function weigh_trees(te, X, Y)
+    get_param(te, :regression) || throw(ErrorException("Can only weight TreeEnsembles for regression."))
     m = JuMP.Model(te.solver)
     @variable(m, w[1:length(te.trees)])
     @constraint(m, sum(w) == 1)
     @variable(m, preds[1:length(Y), 1:length(te.trees)])
-    if get_param(te, :regression)
-        evals = hcat([predict(mt, X) for mt in te.trees]...)
-        @constraint(m, preds .== evals * w)
-        @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
-        optimize!(m)
-        te.weights = getvalue.(w)
-    else
-        throw(ErrorException("TODO."))
-    end
+    evals = hcat([predict(mt, X) for mt in te.trees]...)
+    @constraint(m, preds .== evals * w)
+    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
+    optimize!(m)
+    te.weights = getvalue.(w)
     return
 end
 
 function predict(te::TreeEnsemble, X)
     evals = hcat([predict(mt, X) for mt in te.trees]...)
     if get_param(te, :regression)
-        return evals * te.weights
+        if isnothing(te.weights)
+            throw(ErrorException("TreeEnsemble must be weighted before prediction. Please use the weigh_trees function."))
+        else
+            return evals * te.weights
+        end
     else
-        throw(ErrorException("TODO."))
+        return [mode(evals[i,:])[1] for i = 1:size(X, 1)] # TODO: find a better way to tie-break?
     end
 end
 

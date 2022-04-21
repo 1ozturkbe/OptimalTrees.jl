@@ -119,7 +119,9 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
          sum(r)
          ))
     else # CLASSIFICATION
-        mt.classes = sort(unique(Y)) # The potential classes are sorted.
+        if isnothing(mt.classes)
+            mt.classes = sort(unique(Y)) # The potential classes are sorted.
+        end
         k = length(mt.classes) 
         # Making sure that variables are properly binned. 
         @variable(mt.model, ckt[1:k, lf_idxs], Bin)  # Class at leaf

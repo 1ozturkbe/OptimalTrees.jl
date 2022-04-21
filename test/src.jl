@@ -186,8 +186,25 @@ function test_ensemblereg()
     @test score(te, X, Y) >= 0.5
 end
 
-function test_cluster_heuristic()
+function test_ensemblecls()
+    @info "Testing ensemble classification... "
+    feature_names = MLDatasets.BostonHousing.feature_names()
+    shuffle_idxs = shuffle(1:Int(length(Y)))
     Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+    Y = Array(Y[shuffle_idxs] .>= 20)
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
+    te = TreeEnsemble(SOLVER_SILENT; max_depth = 2)
+    plant_trees(te, 11)
+    generate_binary_tree.(te.trees)
+    train_ensemble(te, X, Y)
+    populate_nodes!.(te.trees)
+    prune!.(te.trees)
+    @test all(check_if_trained.(te.trees))
+    @test score(te, X, Y) >= 0.85
+end
+
+function test_cluster_heuristic()
+    @info "Testing clustering heuristic in classification..."
     shuffle_idxs = shuffle(1:Int(length(Y)))
     Y = Array(Y[shuffle_idxs])
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
@@ -228,5 +245,7 @@ test_sequential()
 test_regression()
 
 test_ensemblereg()
+
+test_ensemblecls()
 
 test_cluster_heuristic()
