@@ -1,6 +1,7 @@
 using Pkg
 Pkg.activate("test")
 
+using Clustering
 using DataFrames
 using Gurobi
 using JuMP

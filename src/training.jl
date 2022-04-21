@@ -99,8 +99,7 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
             f[i] - (sum(beta[j,:] .* X[i,:]) + beta0[j]) <= M * (1 - z[i,j]))
 
         # Loss function
-        @constraint(mt.model, Lt .>= f - Y)
-        @constraint(mt.model, Lt .>= -(f - Y))
+        @constraint(mt.model, Lt .>= (f - Y).^2)
 
         # Additional split hierarchy constraint
         for nd in allleaves(mt)

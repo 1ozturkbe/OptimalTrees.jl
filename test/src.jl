@@ -148,7 +148,7 @@ function test_regression()
     prune!(mt)
 
     @test check_if_trained(mt)
-    score1 = score(mt, X, Y)
+    score1 = score(mt, X_all, Y_all)
     
     # Upping number of samples, and warmstarting
     n_samples = 30
@@ -161,8 +161,8 @@ function test_regression()
     populate_nodes!(mt)
     prune!(mt)
     @test check_if_trained(mt)
-    score2 = score(mt, X, Y)
-    @test score1 <= 5 && score2 <= 5
+    score2 = score(mt, X_all, Y_all)
+    @test score1 <= 1 && score2 <= 1
 end
 
 function test_ensemblereg()
@@ -175,15 +175,46 @@ function test_ensemblereg()
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
 
     te = TreeEnsemble(SOLVER_SILENT; regression = true, max_depth = 1)
-    plant_trees(te, 12)
+    plant_trees(te, 10)
     generate_binary_tree.(te.trees)
     train_ensemble(te, X, Y)
     populate_nodes!.(te.trees)
     prune!.(te.trees)
     @test all(check_if_trained.(te.trees))
     weigh_trees(te, X, Y)
-    @test isapprox(sum(te.weights), 1, atol = 1e-3)
-    @test score(te, X, Y) <= 7
+    @test isapprox(sum(te.weights), 1, atol = 1e-5)
+    @test score(te, X, Y) >= 0.5
+end
+
+function test_cluster_heuristic()
+    Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+    shuffle_idxs = shuffle(1:Int(length(Y)))
+    Y = Array(Y[shuffle_idxs])
+    X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
+
+    X_norm, X_bounds = normalize(X)
+    Y_norm, Y_bounds = normalize(Y)
+    dists = pairwise_distances(X_norm)
+    clust = hclust(dists)
+    max_depth = 5
+    n_clust = 2^(max_depth-1)
+    idxs = cutree(clust; k = n_clust, h = max_depth)
+    cluster_bins = Dict(i => [] for i in unique(idxs))
+    [push!(cluster_bins[idxs[i]], i) for i = 1:length(idxs)]
+    subset_idxs = []
+    sample_proportion = 0.125
+    for (key, val) in cluster_bins # Picking just one-eighth of all samples in clusters
+        append!(subset_idxs, val[1:Int(ceil(sample_proportion*length(val)))])
+    end
+    @test sample_proportion <= length(subset_idxs)/length(Y) <= 2*sample_proportion
+
+    mt = MIOTree(SOLVER_SILENT, max_depth = max_depth)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X_norm[subset_idxs, :], Array(Y_norm .>= 0.3)[subset_idxs])
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test score(mt, X_norm, Array(Y_norm .>= 0.3)) >= 0.8
 end
 
 test_binarynode()
@@ -198,4 +229,4 @@ test_regression()
 
 test_ensemblereg()
 
-
+test_cluster_heuristic()

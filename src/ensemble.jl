@@ -67,14 +67,19 @@ end
 """ Computes the optimal weights for the TreeEnsemble. """
 function weigh_trees(te, X, Y)
     m = JuMP.Model(te.solver)
-    @variable(m, 0 <= w[1:length(te.trees)] <= 1)
+    @variable(m, w[1:length(te.trees)])
     @constraint(m, sum(w) == 1)
     @variable(m, preds[1:length(Y), 1:length(te.trees)])
-    evals = hcat([predict(mt, X) for mt in te.trees]...)
-    @constraint(m, preds .== evals * w)
-    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
-    optimize!(m)
-    te.weights = getvalue.(w)
+    if get_param(te, :regression)
+        evals = hcat([predict(mt, X) for mt in te.trees]...)
+        @constraint(m, preds .== evals * w)
+        @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
+        optimize!(m)
+        te.weights = getvalue.(w)
+    else
+        throw(ErrorException("TODO."))
+    end
+    return
 end
 
 function predict(te::TreeEnsemble, X)
@@ -82,14 +87,14 @@ function predict(te::TreeEnsemble, X)
     if get_param(te, :regression)
         return evals * te.weights
     else
-        return (evals * te.weights .>= 0)
+        throw(ErrorException("TODO."))
     end
 end
 
 function score(te::TreeEnsemble, X, Y)
     preds = predict(te, X)
     if get_param(te, :regression)
-        return sum(abs.(preds .- Y))/length(Y)
+        return 1 - sum((preds .- Y).^2) / sum((preds .- sum(Y)/length(Y)*ones(length(Y))).^2)
     else
         return sum(preds .== Y)/length(Y)
     end
