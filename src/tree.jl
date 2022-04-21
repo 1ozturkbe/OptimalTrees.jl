@@ -148,14 +148,14 @@ apply(mt::MIOTree, X::DataFrame) = apply(mt, Matrix(X))
     $(TYPEDSIGNATURES)
 
 Returns the prediction accuracy of MIOTree. 
-For classification: misclassification error. 
-For regression: mean absolute error. 
+For classification: misclassification accuracy.
+For regression: R^2.  
 """
 
 function score(mt::MIOTree, X, Y)
     preds = predict(mt, X)
     if get_param(mt, :regression)
-        return sum(abs.(preds .- Y))/length(Y)
+        return 1 - sum((preds .- Y).^2) / sum((preds .- sum(Y)/length(Y)*ones(length(Y))).^2)
     else
         return sum(preds .== Y)/length(Y)
     end
@@ -261,38 +261,5 @@ chop_down!(mt::MIOTree) = delete_children!(mt.root) # TODO: check garbage collec
 function generate_binary_tree(mt::MIOTree)
     isempty(alloffspring(mt.root)) || throw(ErrorException("The MIOTree must be ungrown/chopped down to generate a dense binary tree. "))
     generate_binary_tree(mt.root, get_param(mt, :max_depth))
-    return
-end
-
-function deepen_to_max_depth!(mt::MIOTree)
-    md = get_param(mt, :max_depth)
-    queue = allnodes(mt)
-    idx = maximum([nd.idx for nd in queue])
-    while !isempty(queue)
-        node = popfirst!(queue)
-        if is_leaf(node) && depth(node) < md
-            idx += 1
-            leftchild(node, BinaryNode(idx))
-            idx += 1
-            rightchild(node, BinaryNode(idx))
-            append!(queue, [node.left, node.right])
-        end
-    end
-    return
-end
-
-function deepen_one_level!(mt::MIOTree)
-    md = get_param(mt, :max_depth)
-    queue = allnodes(mt)
-    idx = maximum([nd.idx for nd in queue])
-    while !isempty(queue)
-        node = popfirst!(queue)
-        if is_leaf(node) && depth(node) < md
-            idx += 1
-            leftchild(node, BinaryNode(idx))
-            idx += 1
-            rightchild(node, BinaryNode(idx))
-        end
-    end
     return
 end
