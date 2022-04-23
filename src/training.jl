@@ -311,7 +311,7 @@ end
 function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer = 1; pruning = false)
     max_depth = get_param(mt, :max_depth)
     md = min_depth
-    set_param(mt, :max_depth, min_depth)
+    set_param!(mt, :max_depth, min_depth)
     chop_down!(mt)
     generate_binary_tree(mt)
     clean_model!(mt)
@@ -321,7 +321,7 @@ function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer 
     pruning && prune!(mt)
     while md < max_depth
         md += 1
-        set_param(mt, :max_depth, md)
+        set_param!(mt, :max_depth, md)
         deepen_one_level!(mt)
         clean_model!(mt)
         generate_MIO_model(mt, X, Y)
@@ -330,6 +330,6 @@ function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer 
         populate_nodes!(mt)
         pruning && prune!(mt)
     end
-    set_param(mt, :max_depth, max_depth)
+    set_param!(mt, :max_depth, max_depth)
     return
 end

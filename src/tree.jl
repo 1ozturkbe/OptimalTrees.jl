@@ -3,7 +3,7 @@
 
 Contains default MIOTree parameters, and modifies them with kwargs.
 """
-function MIOTree_defaults(kwargs...)
+function MIOTree_defaults(;kwargs...)
     d = Dict(:max_depth => 5,
         :cp => 1e-6,
         :hypertol => 0.005, # hyperplane separation tolerance
@@ -11,11 +11,7 @@ function MIOTree_defaults(kwargs...)
         :regression_sparsity => :all, 
         :hyperplane_sparsity => :all, 
         :regression => false)
-    if !isempty(kwargs)
-        for (key, value) in kwargs
-            set_param(d, key, value)
-        end
-    end
+    set_params!(d; kwargs...)
     return d
 end
 
@@ -60,7 +56,7 @@ mutable struct MIOTree
                  solver)
         for (key, val) in kwargs
             if key in keys(mt.params)
-                set_param(mt, key, val)
+                set_param!(mt, key, val)
             else
                 throw(ErrorException("Bad kwarg with key $(key) and value $(val) in MIOTree constructor."))
             end
@@ -71,7 +67,9 @@ end
 
 get_param(mt::MIOTree, sym::Symbol) = get_param(mt.params, sym)
 
-set_param(mt::MIOTree, sym::Symbol, val::Any) = set_param(mt.params, sym, val)
+set_param!(mt::MIOTree, sym::Symbol, val::Any) = set_param!(mt.params, sym, val)
+
+set_params!(mt::MIOTree; kwargs...) = set_params!(mt.params; kwargs...)
 
 """ Returns all BinaryNodes of MIOTree. """
 allnodes(mt::MIOTree) = [mt.root, alloffspring(mt.root)...]

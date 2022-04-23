@@ -20,7 +20,7 @@ end
 function test_miotree()
     @info "Testing MIOTree..."
     d = MIOTree_defaults()
-    d = MIOTree_defaults(:max_depth => 4, :cp => 1e-5)
+    d = MIOTree_defaults(max_depth =  4, cp = 1e-5)
     @test d[:max_depth] == 4
     @test get_param(d, :cp) == 1e-5
     mt = MIOTree(SOLVER_SILENT; max_depth = 4, minbucket = 0.03)
@@ -29,8 +29,7 @@ function test_miotree()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
     md = 2
-    set_param(mt, :max_depth, md)
-    set_param(mt, :minbucket, 0.001)
+    set_params!(mt, max_depth = md, minbucket = 0.001)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X, Y)
     @test length(allleaves(mt)) == 2^md

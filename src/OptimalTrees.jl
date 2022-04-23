@@ -56,7 +56,7 @@ module OptimalTrees
         score,
 
     # Helper functions
-        set_param, get_param,
+        set_param!, set_params!, get_param,
         normalize, pairwise_distances, mode,
         allnodes, allleaves,
         clean_model!,

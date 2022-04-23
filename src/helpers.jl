@@ -1,13 +1,20 @@
 """ Sets parameters within Dict. """
-function set_param(gm::Dict, key::Symbol, val, checks = true)
-    if haskey(gm, key) && val isa typeof(gm[key])
-        gm[key] = val
+function set_param!(d::Dict, key::Symbol, val, checks = true)
+    if haskey(d, key) && val isa typeof(d[key])
+        d[key] = val
         return
     elseif checks
         throw(ErrorException("Parameter with key " * string(key) * " is invalid."))
     else 
         return
     end
+end
+
+function set_params!(d::Dict; kwargs...)
+    for (k,v) in kwargs
+        set_param!(d, k, v)
+    end
+    return
 end
 
 """ Gets parameters within Dict. """

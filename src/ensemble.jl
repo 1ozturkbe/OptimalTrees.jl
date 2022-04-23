@@ -6,11 +6,7 @@ function TreeEnsemble_defaults(kwargs...)
         :hypertol => 0.005, # hyperplane separation tolerance
         :minbucket => 0.02, 
         :regression => false)
-    if !isempty(kwargs)
-        for (key, value) in kwargs
-            set_param(d, key, value)
-        end
-    end
+    set_params!(d; kwargs...)
     return d
 end
 
@@ -27,18 +23,13 @@ mutable struct TreeEnsemble
                  TreeEnsemble_defaults(),
                  nothing,
                  solver)
-        for (key, val) in kwargs
-            if key in keys(te.params)
-                set_param(te.params, key, val)
-            else
-                throw(ErrorException("Bad kwarg with key $(key) and value $(val) in TreeEnsemble constructor."))
-            end
-        end
+        set_params!(te.params; kwargs...)
         return te
     end
 end
 
-set_param(te::TreeEnsemble, s::Symbol, v::Any) = set_param(te.params, s, v)
+set_param!(te::TreeEnsemble, s::Symbol, v::Any) = set_param!(te.params, s, v)
+set_params!(te::TreeEnsemble; kwargs...) = set_params!(te.params; kwargs...)
 get_param(te::TreeEnsemble, s::Symbol) = get_param(te.params, s)
 
 """ Plants a set number of MIOTrees in a TreeEnsemble. """
