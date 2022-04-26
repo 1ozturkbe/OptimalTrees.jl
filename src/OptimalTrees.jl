@@ -26,7 +26,7 @@ module OptimalTrees
     # Tree building
         MIOTree_defaults,
         leftchild, rightchild, children, 
-        get_lower_child, get_upper_child,
+        get_lower_child, get_upper_child, get_parent,
         printnode, generate_binary_tree, 
         delete_children!, 
         populate_nodes!, prune!, 
@@ -34,7 +34,7 @@ module OptimalTrees
         
     # More advanced tree building
         deepen_to_max_depth!, 
-        deepen_one_level!, 
+        deepen_one_level!, clone, 
 
     # Tree querying
         is_leaf, depth, lineage, alloffspring,

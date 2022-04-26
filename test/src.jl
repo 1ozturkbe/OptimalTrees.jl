@@ -2,6 +2,7 @@
 function test_binarynode()
     @info "Testing BinaryNode..."
     bn = BinaryNode(1)
+    @test_throws ErrorException get_parent(bn)
     leftchild(bn, BinaryNode(2))
     rightchild(bn, BinaryNode(3))
     rightchild(bn.right, BinaryNode(4))
@@ -9,6 +10,8 @@ function test_binarynode()
         isempty(children(bn.right.right)) && length(alloffspring(bn)) == 3
     
     delete_children!(bn.right)
+    @test_throws ErrorException get_lower_child(bn.right)
+    @test_throws ErrorException get_upper_child(bn.right)
     @test isnothing(bn.parent) && isnothing(bn.right.right) && 
         isempty(children(bn.right)) && length(alloffspring(bn)) == 2
 
@@ -48,6 +51,10 @@ function test_miotree()
     @test check_if_trained(mt)
     @test length(allleaves(mt)) == sum(isapprox.(ckt, 1, atol = 1e-4)) == count(!isnothing(node.label) for node in allnodes(mt))
     @test all(getproperty.(apply(mt, X), :label) .== predict(mt, X))
+
+    # Testing cloning
+    new_mt = clone(mt)
+    @test all(get_split_values(mt.root) .== get_split_values(new_mt.root))
 
     # # Plotting results for debugging
     # using Plots
@@ -234,18 +241,18 @@ function test_cluster_heuristic()
     @test score(mt, X_norm, Array(Y_norm .>= 0.3)) >= 0.8
 end
 
-test_binarynode()
+# test_binarynode()
 
-test_miotree()
+# test_miotree()
 
-test_hyperplanecart()
+# test_hyperplanecart()
 
-test_sequential()
+# test_sequential()
 
-test_regression()
+# test_regression()
 
-test_ensemblereg()
+# test_ensemblereg()
 
-test_ensemblecls()
+# test_ensemblecls()
 
-test_cluster_heuristic()
+# test_cluster_heuristic()

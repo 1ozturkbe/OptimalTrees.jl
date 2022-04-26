@@ -71,6 +71,15 @@ set_param!(mt::MIOTree, sym::Symbol, val::Any) = set_param!(mt.params, sym, val)
 
 set_params!(mt::MIOTree; kwargs...) = set_params!(mt.params; kwargs...)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Clones an MIOTree via deepcopy. 
+"""
+function clone(mt::MIOTree)
+    return deepcopy(mt)
+end
+
 """ Returns all BinaryNodes of MIOTree. """
 allnodes(mt::MIOTree) = [mt.root, alloffspring(mt.root)...]
 
