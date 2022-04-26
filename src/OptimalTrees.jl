@@ -41,6 +41,7 @@ module OptimalTrees
         get_classification_label, 
         set_classification_label!, 
         get_split_values, set_split_values!,
+        get_split_threshold, get_split_weights,
         apply, predict,
 
     # Tree training

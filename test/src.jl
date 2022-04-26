@@ -54,7 +54,7 @@ function test_miotree()
 
     # Testing cloning
     new_mt = clone(mt)
-    @test all(get_split_values(mt.root) .== get_split_values(new_mt.root))
+    @test all(get_split_values(mt.root) .== (get_split_weights(new_mt.root), get_split_threshold(new_mt.root)))
 
     # # Plotting results for debugging
     # using Plots

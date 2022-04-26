@@ -118,6 +118,18 @@ function get_split_values(bn::BinaryNode)
     return bn.a, bn.b
 end
 
+""" Returns b-value of the split on BinaryNode. """
+function get_split_threshold(bn::BinaryNode)
+    is_leaf(bn) && throw(ErrorException("Cannot get split threshold of leaf node $(bn.idx)."))
+    return bn.b
+end
+
+""" Returns a-coefficients of the split on BinaryNode. """
+function get_split_weights(bn::BinaryNode)
+    is_leaf(bn) && throw(ErrorException("Cannot get split weights of leaf node $(bn.idx)."))
+    return bn.a
+end
+
 """ 
 Sets a-coefficients and b-value of a split on BinaryNode. 
 """
