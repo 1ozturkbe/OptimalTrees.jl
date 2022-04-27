@@ -37,7 +37,8 @@ module OptimalTrees
         deepen_one_level!, clone, 
 
     # Tree querying
-        is_leaf, depth, lineage, alloffspring,
+        is_leaf, depth, 
+        lineage, alloffspring,
         get_classification_label, 
         set_classification_label!, 
         get_split_values, set_split_values!,

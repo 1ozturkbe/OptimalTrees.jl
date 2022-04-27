@@ -166,7 +166,7 @@ function depth(bn::BinaryNode)
 end
 
 """
-    get_classification_label(bn::BinaryNode)
+    $(TYPEDSIGNATURES)
 
 Returns the classification label of a leaf BinaryNode. 
 """
@@ -174,6 +174,20 @@ function get_classification_label(bn::BinaryNode)
     is_leaf(bn) || throw(ErrorException("Cannot get the classification label of node $(bn.idx), " * 
                         "since it is not a leaf node."))
     return bn.label
+end
+
+""" Returns the regression constant of a leaf BinaryNode. """
+function get_regression_constant(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get the regression constant of node $(bn.idx), since it is not a leaf node."))
+    bn.label isa Tuple || throw(ErrorException("Node $(nd.dx) has not been properly labeled. Are you sure that the MIO tree is a regression tree?"))
+    return bn.label[1]
+end
+
+""" Returns the regression weights of a leaf BinaryNode. """
+function get_regression_weights(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get the regression weights of node $(bn.idx), since it is not a leaf node."))
+    bn.label isa Tuple || throw(ErrorException("Node $(nd.dx) has not been properly labeled. Are you sure that the MIO tree is a regression tree?"))
+    return bn.label[2]
 end
 
 """

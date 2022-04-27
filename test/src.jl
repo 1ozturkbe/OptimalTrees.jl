@@ -241,18 +241,18 @@ function test_cluster_heuristic()
     @test score(mt, X_norm, Array(Y_norm .>= 0.3)) >= 0.8
 end
 
-# test_binarynode()
+test_binarynode()
 
-# test_miotree()
+test_miotree()
 
-# test_hyperplanecart()
+test_hyperplanecart()
 
-# test_sequential()
+test_sequential()
 
-# test_regression()
+test_regression()
 
-# test_ensemblereg()
+test_ensemblereg()
 
-# test_ensemblecls()
+test_ensemblecls()
 
-# test_cluster_heuristic()
+test_cluster_heuristic()
