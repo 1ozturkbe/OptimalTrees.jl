@@ -30,8 +30,8 @@ function test_data_processing()
 
     data = split_data(X, Y)
     @test length(data) == 2 && length(data[1][2]) + length(data[2][2]) == length(Y)
-    data = split_data(X, Y, bins = 3)
-    @test length(data) == 3 && sum(length(dat[2]) for dat in data) == length(Y) && all(isapprox(length(dat[2]), length(Y)/3, atol = 1) for dat in data)
+    data = split_data(X, Y, bins = 9)
+    @test length(data) == 9 && sum(length(dat[2]) for dat in data) == length(Y) && all(isapprox(length(dat[2]), length(Y)/9, atol = 1) for dat in data)
     data = split_data(X, Y, sample_count = [100, 200, 206])
     @test length(data) == 3 && sum(length(dat[2]) for dat in data) == length(Y) 
 end
@@ -107,7 +107,7 @@ function test_hyperplanecart()
     df = binarize(load_irisdata())
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
-    hyperplane_cart(mt, X, Y)
+    fit!(mt, "cart", X, Y)
     @test check_if_trained(mt)
     @test score(mt, X, Y) == 1.
     nds = apply(mt, X)
@@ -150,7 +150,6 @@ function test_sequential()
     df = load_irisdata()
     X = Matrix(df[:,1:4])
     Y =  Array(df[:, "class"])
-    clean_model!(mt)
     sequential_train!(mt, X, Y, pruning = true)
     @test true
 end
@@ -164,11 +163,7 @@ function test_regression()
     X = X_all[1:n_samples, :]
     Y = Y_all[1:n_samples, :]
     mt = MIOTree(SOLVER_SILENT, max_depth = 2, regression = true)
-    generate_binary_tree(mt)
-    generate_MIO_model(mt, X, Y)
-    optimize!(mt)
-    populate_nodes!(mt)
-    prune!(mt)
+    fit!(mt, "mio", X, Y)
     @test all(label isa Tuple for label in get_classification_label.(allleaves(mt)))
     @test all(label isa Real for label in get_regression_constant.(allleaves(mt)))
     @test all(label isa AbstractArray for label in get_regression_weights.(allleaves(mt)))
@@ -176,7 +171,7 @@ function test_regression()
     @test check_if_trained(mt)
     score1 = score(mt, X_all, Y_all)
     
-    # Upping number of samples, and warmstarting
+    # Upping number of samples, and warmstart procedure
     n_samples = 30
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[1:n_samples, :]
     Y = Array(transpose(MLDatasets.BostonHousing.targets()))[1:n_samples, :]
@@ -202,10 +197,7 @@ function test_ensemblereg()
 
     te = TreeEnsemble(SOLVER_SILENT; regression = true, max_depth = 1)
     plant_trees(te, 10)
-    generate_binary_tree.(te.trees)
-    train_ensemble(te, X, Y)
-    populate_nodes!.(te.trees)
-    prune!.(te.trees)
+    fit!(te, "mio", X, Y)
     @test all(check_if_trained.(te.trees))
     weigh_trees(te, X, Y)
     @test isapprox(sum(te.weights), 1, atol = 1e-5)
@@ -221,10 +213,7 @@ function test_ensemblecls()
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
     te = TreeEnsemble(SOLVER_SILENT; max_depth = 2)
     plant_trees(te, 11)
-    generate_binary_tree.(te.trees)
-    train_ensemble(te, X, Y)
-    populate_nodes!.(te.trees)
-    prune!.(te.trees)
+    fit!(te, "cart", X, Y)
     @test all(check_if_trained.(te.trees))
     @test score(te, X, Y) >= 0.85
 end
@@ -278,17 +267,3 @@ test_ensemblereg()
 test_ensemblecls()
 
 test_cluster_heuristic()
-
-# function fit!(mt::MIOTree, method::String, X::Union{DataFrame, Matrix}, Y::Vector)
-#     if method in ["mio", "MIO"]
-#         generate_binary_tree(mt)
-#         generate_MIO_model(mt, Matrix(X), Y)
-#         optimize!(mt)
-#     elseif method in ["cart", "CART"]
-#         hyperplane_cart(mt, Matrix(X), Y)
-#     end
-#     populate_nodes!(mt)
-#     prune!(mt)
-#     return
-# end
-

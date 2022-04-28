@@ -40,21 +40,8 @@ function plant_trees(te::TreeEnsemble, n_trees::Int)
     end
 end
 
-""" Trains a TreeEnsemble based on planted trees. """
-function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array, mt_idxs::Union{Nothing, Array} = nothing)
-    if !isnothing(mt_idxs)
-        length(mt_idxs) .== length(te.trees) || throw(ErrorException("Number of sample batches must match the number of trees."))
-    else
-        n_points = Int(floor(length(Y) / length(te.trees)))
-        mt_idxs = []
-        for i = 1:length(te.trees)
-            idxs = (i-1) * n_points + 1: i * n_points
-            if i == length(te.trees)
-                idxs = (i-1) * n_points + 1: length(Y)
-            end
-            push!(mt_idxs, idxs)
-        end
-    end
+function fit!(te::TreeEnsemble, method::String, X, Y)
+    data = split_data(X, Y, bins = length(te.trees))
     if !get_param(te, :regression)
         te.classes = sort(unique(Y)) # Make sure that all trees have the same classes. 
         for mt in te.trees
@@ -62,10 +49,7 @@ function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array, mt_idxs::Union{No
         end
     end
     @showprogress 1 "Training ensemble of $(length(te.trees)) trees. " for i = 1:length(te.trees)
-        tree = te.trees[i]
-        idxs = mt_idxs[i]
-        generate_MIO_model(tree, X[idxs,:], Y[idxs])
-        optimize!(tree)
+        fit!(te.trees[i], method, data[i][1], data[i][2])
     end
     return
 end

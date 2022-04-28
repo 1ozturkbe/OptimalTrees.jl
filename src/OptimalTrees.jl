@@ -47,6 +47,7 @@ module OptimalTrees
         apply, predict,
 
     # Tree training
+        fit!, 
         SVM, hyperplane_cart,
         warmstart, generate_MIO_model, 
         sequential_train!,
@@ -66,7 +67,7 @@ module OptimalTrees
         split_data,
 
     # Tree ensembles
-        TreeEnsemble_defaults, train_ensemble, 
+        TreeEnsemble_defaults,
         plant_trees, weigh_trees,
 
     # Debugging

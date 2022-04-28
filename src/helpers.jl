@@ -101,7 +101,7 @@ function split_data(X, Y;
     if !isnothing(sample_proportion)
         isapprox(sum(sample_proportion), 1, atol = 1e-7) || throw(ErrorException("Sum of sample-proportion in split_data must be equal to the number of samples. "))
         for i = 1:length(sample_proportion)
-            append!(subset_idxs, Int(ceil(length(Y)*sum(sample_proportion[1:i]))))
+            append!(subset_idxs, minimum([Int(ceil(length(Y)*sum(sample_proportion[1:i]))), length(Y)])) # Minimum to make sure we get no bugs with atol = 1e-7
         end
     elseif !isnothing(sample_count)
         sum(sample_count) == size(X, 1) || throw(ErrorException("Sum of sample-count in split_data must be equal to the number of samples. "))

@@ -333,3 +333,33 @@ function sequential_train!(mt::MIOTree, X::Matrix, Y::Array, min_depth::Integer 
     set_param!(mt, :max_depth, max_depth)
     return
 end
+
+""" 
+    $(TYPEDSIGNATURES)
+
+Multi-purpose training function for MIOTrees or TreeEnsembles. 
+
+Arguments: 
+- mt::MIOTree
+- method::String: describes the training method/heuristic
+- X::Union{DataFrame, Matrix}: independent variable data
+- Y::Vector: dependent variable data
+
+For TreeEnsembles, data is partitioned equally. 
+Please use split_data and fit! on individual MIOTrees if 
+specific data splits are desired. 
+"""
+function fit!(mt::MIOTree, method::String, X, Y)
+    if method in ["mio", "MIO"]
+        generate_binary_tree(mt)
+        generate_MIO_model(mt, Matrix(X), Y)
+        optimize!(mt)
+    elseif method in ["cart", "CART"]
+        hyperplane_cart(mt, Matrix(X), Y)
+    else 
+        throw(ErrorException("Method $(method) is not supported."))
+    end
+    populate_nodes!(mt)
+    prune!(mt)
+    return
+end
