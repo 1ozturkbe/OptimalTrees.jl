@@ -75,3 +75,40 @@ function mode(X::Vector)
     maxval = maximum(values(count_dict))
     return [k for (k,v) in count_dict if v == maxval]
 end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Splits data according to the kwargs. Potential kwargs:
+- bins::Int: The number of bins that you would like the data to fit into. 
+- sample_proportion::Union{Array, Real}: Proportion of samples in each bin. If Real, means only two bins. 
+- sample_count::Union{Array}: Number of samples in each bin. 
+"""
+function split_data(X, Y; 
+    bins::Union{Int, Nothing} = nothing,
+    sample_proportion::Union{Array, Real, Nothing} = nothing,
+    sample_count::Union{Array, Nothing} = nothing)
+
+    (sum(!isnothing(bins) + !isnothing(sample_proportion) + !isnothing(sample_count)) <= 1) || throw(ErrorException("split_data only takes one or zero kwargs."))
+
+    subset_idxs = [0]
+    if sum(!isnothing(bins) + !isnothing(sample_proportion) + !isnothing(sample_count)) == 0
+        sample_proportion = [0.5, 0.5]
+    elseif !isnothing(bins)
+        sample_proportion = [1/bins for i = 1:bins]
+    end
+
+    if !isnothing(sample_proportion)
+        isapprox(sum(sample_proportion), 1, atol = 1e-7) || throw(ErrorException("Sum of sample-proportion in split_data must be equal to the number of samples. "))
+        for i = 1:length(sample_proportion)
+            append!(subset_idxs, Int(ceil(length(Y)*sum(sample_proportion[1:i]))))
+        end
+    elseif !isnothing(sample_count)
+        sum(sample_count) == size(X, 1) || throw(ErrorException("Sum of sample-count in split_data must be equal to the number of samples. "))
+        for i = 1:length(sample_count)
+            push!(subset_idxs, subset_idxs[end] + sample_count[i])
+        end        
+    end
+    return [(X[subset_idxs[i]+1:subset_idxs[i+1], :], 
+    Y[subset_idxs[i]+1:subset_idxs[i+1]]) for i = 1:length(subset_idxs)-1]
+end

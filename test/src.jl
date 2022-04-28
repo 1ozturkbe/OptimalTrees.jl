@@ -19,6 +19,23 @@ function test_binarynode()
     @test_throws ErrorException set_classification_label!(bn, 5)
 end
 
+function test_data_processing()
+    @info "Testing data processing..."
+    Y = transpose(MLDatasets.BostonHousing.targets())
+    X = transpose(MLDatasets.BostonHousing.features())
+
+    @test_throws ErrorException split_data(X, Y, bins = 3, sample_proportion = [0.1, 0.2, 0.7])
+    @test_throws ErrorException split_data(X, Y, sample_proportion = [0.1, 0.2, 0.3])
+    @test_throws ErrorException split_data(X, Y, sample_count = [10, 20, 30])
+
+    data = split_data(X, Y)
+    @test length(data) == 2 && length(data[1][2]) + length(data[2][2]) == length(Y)
+    data = split_data(X, Y, bins = 3)
+    @test length(data) == 3 && sum(length(dat[2]) for dat in data) == length(Y) && all(isapprox(length(dat[2]), length(Y)/3, atol = 1) for dat in data)
+    data = split_data(X, Y, sample_count = [100, 200, 206])
+    @test length(data) == 3 && sum(length(dat[2]) for dat in data) == length(Y) 
+end
+
 """ Tests full MIO solution functionalities of MIOTree. """
 function test_miotree()
     @info "Testing MIOTree..."
@@ -152,6 +169,9 @@ function test_regression()
     optimize!(mt)
     populate_nodes!(mt)
     prune!(mt)
+    @test all(label isa Tuple for label in get_classification_label.(allleaves(mt)))
+    @test all(label isa Real for label in get_regression_constant.(allleaves(mt)))
+    @test all(label isa AbstractArray for label in get_regression_weights.(allleaves(mt)))
 
     @test check_if_trained(mt)
     score1 = score(mt, X_all, Y_all)
@@ -243,6 +263,8 @@ end
 
 test_binarynode()
 
+test_data_processing()
+
 test_miotree()
 
 test_hyperplanecart()
@@ -256,3 +278,17 @@ test_ensemblereg()
 test_ensemblecls()
 
 test_cluster_heuristic()
+
+# function fit!(mt::MIOTree, method::String, X::Union{DataFrame, Matrix}, Y::Vector)
+#     if method in ["mio", "MIO"]
+#         generate_binary_tree(mt)
+#         generate_MIO_model(mt, Matrix(X), Y)
+#         optimize!(mt)
+#     elseif method in ["cart", "CART"]
+#         hyperplane_cart(mt, Matrix(X), Y)
+#     end
+#     populate_nodes!(mt)
+#     prune!(mt)
+#     return
+# end
+

@@ -43,6 +43,7 @@ module OptimalTrees
         set_classification_label!, 
         get_split_values, set_split_values!,
         get_split_threshold, get_split_weights,
+        get_regression_constant, get_regression_weights,
         apply, predict,
 
     # Tree training
@@ -62,6 +63,7 @@ module OptimalTrees
         normalize, pairwise_distances, mode,
         allnodes, allleaves,
         clean_model!,
+        split_data,
 
     # Tree ensembles
         TreeEnsemble_defaults, train_ensemble, 
