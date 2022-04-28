@@ -354,12 +354,13 @@ function fit!(mt::MIOTree, method::String, X, Y)
         generate_binary_tree(mt)
         generate_MIO_model(mt, Matrix(X), Y)
         optimize!(mt)
+        populate_nodes!(mt)
+        prune!(mt)
     elseif method in ["cart", "CART"]
         hyperplane_cart(mt, Matrix(X), Y)
+        prune!(mt)
     else 
         throw(ErrorException("Method $(method) is not supported."))
     end
-    populate_nodes!(mt)
-    prune!(mt)
     return
 end
