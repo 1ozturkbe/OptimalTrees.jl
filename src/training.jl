@@ -186,10 +186,13 @@ Performs greedy tree training with hyperplanes for binary classification.
 """
 function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
     n_samples, n_vars = size(X)
-    classes = sort(unique(Y))
-    length(classes) == 2 || throw(ErrorException("Hyperplane CART can only be applied to binary classification problems. "))
+    if isnothing(mt.classes)
+        mt.classes = sort(unique(Y))
+    end
+    length(mt.classes) == 2 || throw(ErrorException("Hyperplane CART can only be applied to binary classification problems. "))
     isempty(alloffspring(mt.root)) || throw(ErrorException("Hyperplane CART can only be applied to ungrown trees. "))
-    minpoints = ceil(n_samples * get_param(mt, :minbucket))
+    min_points = ceil(n_samples * get_param(mt, :minbucket))
+    max_depth = get_param(mt, :max_depth)
     counts = Dict((i => count(==(i), Y)) for i in unique(Y))
     maxval = 0
     maxkey = ""
@@ -213,8 +216,8 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         left_idxs = findall(x -> x <= 0, 
             [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
         point_idxs[leaf.left.idx] = point_idxs[leaf.idx][left_idxs]
-        n_pos_left = count(Y[left_idxs].== classes[2])
-        n_neg_left = count(Y[left_idxs] .== classes[1])
+        n_pos_left = sum(Y[point_idxs[leaf.left.idx]] .== mt.classes[2])
+        n_neg_left = sum(Y[point_idxs[leaf.left.idx]] .== mt.classes[1])
 
         # Checking right child, and adding to valid leaves if necessary
         ct += 1
@@ -222,32 +225,32 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         right_idxs = findall(x -> x > 0, 
         [sum(leaf.a .*X[i, :]) - leaf.b for i = point_idxs[leaf.idx]])
         point_idxs[leaf.right.idx] = point_idxs[leaf.idx][right_idxs]
-        n_pos_right = count(Y[right_idxs] .== classes[2])
-        n_neg_right = count(Y[right_idxs] .== classes[1])
+        n_pos_right = sum(Y[point_idxs[leaf.right.idx]] .== mt.classes[2])
+        n_neg_right = sum(Y[point_idxs[leaf.right.idx]] .== mt.classes[1])
 
         # Setting labels
         if n_pos_left/n_neg_left > 1 
-            set_classification_label!(leaf.left, classes[2])
+            set_classification_label!(leaf.left, mt.classes[2])
         elseif n_pos_left/n_neg_left == 1
             @warn "Leaf $(leaf.left.idx) has samples that are split 50/50. Will set based on label of sibling."
         else
-            set_classification_label!(leaf.left, classes[1])
+            set_classification_label!(leaf.left, mt.classes[1])
         end
         if n_pos_right/n_neg_right > 1 
-            set_classification_label!(leaf.right, classes[2])
+            set_classification_label!(leaf.right, mt.classes[2])
         elseif n_pos_right/n_neg_right == 1
             @warn "Leaf $(leaf.right.idx) has samples that are split 50/50. Will set based on label of sibling."
         else
-            set_classification_label!(leaf.right, classes[1])
+            set_classification_label!(leaf.right, mt.classes[1])
         end
         # Resolving leaf labels based on sibling leaves. 
         if isnothing(leaf.left.label) 
             if isnothing(leaf.right.label)
                 throw(ErrorException("Data seems to be perfectly random. Bug."))
             else
-                leaf.left.label = findall(x -> x != leaf.right.label, classes)[1]
+                leaf.left.label = findall(x -> x != leaf.right.label, mt.classes)[1]
             end
-            leaf.right.label = findall(x -> x != leaf.left.label, classes)[1]
+            leaf.right.label = findall(x -> x != leaf.left.label, mt.classes)[1]
         end
         
         # Pruning if necessary, 
@@ -262,10 +265,10 @@ function hyperplane_cart(mt::MIOTree, X::Matrix, Y::Array)
         else
             left_accuracy = abs(n_pos_left - n_neg_left) / length(left_idxs)              
             right_accuracy = abs(n_pos_right - n_neg_right) / length(right_idxs)
-            if left_accuracy != 1 && 1 - left_accuracy ≥ minpoints / length(left_idxs)
+            if n_pos_left >= min_points && n_neg_left >= min_points && depth(leaf.left) < max_depth
                 push!(valid_leaves, leaf.left)
             end
-            if right_accuracy != 1 && 1 - right_accuracy ≥ minpoints / length(right_idxs)
+            if n_pos_right >= min_points && n_neg_right >= min_points && depth(leaf.right) < max_depth
                 push!(valid_leaves, leaf.right)
             end
             # Since leaf is no longer a leaf, deleting its point indices. 
@@ -350,6 +353,9 @@ Please use split_data and fit! on individual MIOTrees if
 specific data splits are desired. 
 """
 function fit!(mt::MIOTree, method::String, X, Y)
+    if !get_param(mt, :regression) && isnothing(mt.classes)
+        mt.classes = sort(unique(Y))
+    end
     if method in ["mio", "MIO"]
         generate_binary_tree(mt)
         generate_MIO_model(mt, Matrix(X), Y)
