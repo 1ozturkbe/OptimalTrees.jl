@@ -26,6 +26,7 @@ module OptimalTrees
     # Tree building
         MIOTree_defaults,
         leftchild, rightchild, children, 
+        get_lower_child, get_upper_child, get_parent,
         printnode, generate_binary_tree, 
         delete_children!, 
         populate_nodes!, prune!, 
@@ -33,16 +34,20 @@ module OptimalTrees
         
     # More advanced tree building
         deepen_to_max_depth!, 
-        deepen_one_level!, 
+        deepen_one_level!, clone, 
 
     # Tree querying
-        is_leaf, depth, lineage, alloffspring,
+        is_leaf, depth, 
+        lineage, alloffspring,
         get_classification_label, 
         set_classification_label!, 
         get_split_values, set_split_values!,
+        get_split_threshold, get_split_weights,
+        get_regression_constant, get_regression_weights,
         apply, predict,
 
     # Tree training
+        fit!, 
         SVM, hyperplane_cart,
         warmstart, generate_MIO_model, 
         sequential_train!,
@@ -55,13 +60,14 @@ module OptimalTrees
         score,
 
     # Helper functions
-        set_param, get_param,
-        normalize, pairwise_distances,
+        set_param!, set_params!, get_param,
+        normalize, pairwise_distances, mode,
         allnodes, allleaves,
         clean_model!,
+        split_data,
 
     # Tree ensembles
-        TreeEnsemble_defaults, train_ensemble, 
+        TreeEnsemble_defaults,
         plant_trees, weigh_trees,
 
     # Debugging

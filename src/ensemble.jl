@@ -6,11 +6,7 @@ function TreeEnsemble_defaults(kwargs...)
         :hypertol => 0.005, # hyperplane separation tolerance
         :minbucket => 0.02, 
         :regression => false)
-    if !isempty(kwargs)
-        for (key, value) in kwargs
-            set_param(d, key, value)
-        end
-    end
+    set_params!(d; kwargs...)
     return d
 end
 
@@ -27,18 +23,13 @@ mutable struct TreeEnsemble
                  TreeEnsemble_defaults(),
                  nothing,
                  solver)
-        for (key, val) in kwargs
-            if key in keys(te.params)
-                set_param(te.params, key, val)
-            else
-                throw(ErrorException("Bad kwarg with key $(key) and value $(val) in TreeEnsemble constructor."))
-            end
-        end
+        set_params!(te.params; kwargs...)
         return te
     end
 end
 
-set_param(te::TreeEnsemble, s::Symbol, v::Any) = set_param(te.params, s, v)
+set_param!(te::TreeEnsemble, s::Symbol, v::Any) = set_param!(te.params, s, v)
+set_params!(te::TreeEnsemble; kwargs...) = set_params!(te.params; kwargs...)
 get_param(te::TreeEnsemble, s::Symbol) = get_param(te.params, s)
 
 """ Plants a set number of MIOTrees in a TreeEnsemble. """
@@ -49,45 +40,45 @@ function plant_trees(te::TreeEnsemble, n_trees::Int)
     end
 end
 
-""" Trains a TreeEnsemble based on planted trees. """
-function train_ensemble(te::TreeEnsemble, X::Matrix, Y::Array)
-    n_points = Int(floor(length(Y) / length(te.trees)))
-    @showprogress 1 "Training ensemble of $(length(te.trees)) trees. " for i = 1:length(te.trees)
-        tree = te.trees[i]
-        idxs = (i-1) * n_points + 1: i * n_points
-        if i == length(te.trees)
-            idxs = (i-1) * n_points + 1: length(Y)
+function fit!(te::TreeEnsemble, method::String, X, Y)
+    data = split_data(X, Y, bins = length(te.trees))
+    if !get_param(te, :regression)
+        te.classes = sort(unique(Y)) # Make sure that all trees have the same classes. 
+        for mt in te.trees
+            mt.classes = te.classes
         end
-        generate_MIO_model(tree, X[idxs,:], Y[idxs])
-        optimize!(tree)
+    end
+    @showprogress 1 "Training ensemble of $(length(te.trees)) trees. " for i = 1:length(te.trees)
+        fit!(te.trees[i], method, data[i][1], data[i][2])
     end
     return
 end
 
-""" Computes the optimal weights for the TreeEnsemble. """
+""" Computes the optimal weights for a regressing TreeEnsemble. """
 function weigh_trees(te, X, Y)
+    get_param(te, :regression) || throw(ErrorException("Can only weight TreeEnsembles for regression."))
     m = JuMP.Model(te.solver)
     @variable(m, w[1:length(te.trees)])
     @constraint(m, sum(w) == 1)
     @variable(m, preds[1:length(Y), 1:length(te.trees)])
-    if get_param(te, :regression)
-        evals = hcat([predict(mt, X) for mt in te.trees]...)
-        @constraint(m, preds .== evals * w)
-        @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
-        optimize!(m)
-        te.weights = getvalue.(w)
-    else
-        throw(ErrorException("TODO."))
-    end
+    evals = hcat([predict(mt, X) for mt in te.trees]...)
+    @constraint(m, preds .== evals * w)
+    @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
+    optimize!(m)
+    te.weights = getvalue.(w)
     return
 end
 
 function predict(te::TreeEnsemble, X)
     evals = hcat([predict(mt, X) for mt in te.trees]...)
     if get_param(te, :regression)
-        return evals * te.weights
+        if isnothing(te.weights)
+            throw(ErrorException("TreeEnsemble must be weighted before prediction. Please use the weigh_trees function."))
+        else
+            return evals * te.weights
+        end
     else
-        throw(ErrorException("TODO."))
+        return [mode(evals[i,:])[1] for i = 1:size(X, 1)] # TODO: find a better way to tie-break?
     end
 end
 

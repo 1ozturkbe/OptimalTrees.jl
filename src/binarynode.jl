@@ -118,6 +118,18 @@ function get_split_values(bn::BinaryNode)
     return bn.a, bn.b
 end
 
+""" Returns b-value of the split on BinaryNode. """
+function get_split_threshold(bn::BinaryNode)
+    is_leaf(bn) && throw(ErrorException("Cannot get split threshold of leaf node $(bn.idx)."))
+    return bn.b
+end
+
+""" Returns a-coefficients of the split on BinaryNode. """
+function get_split_weights(bn::BinaryNode)
+    is_leaf(bn) && throw(ErrorException("Cannot get split weights of leaf node $(bn.idx)."))
+    return bn.a
+end
+
 """ 
 Sets a-coefficients and b-value of a split on BinaryNode. 
 """
@@ -154,7 +166,7 @@ function depth(bn::BinaryNode)
 end
 
 """
-    get_classification_label(bn::BinaryNode)
+    $(TYPEDSIGNATURES)
 
 Returns the classification label of a leaf BinaryNode. 
 """
@@ -162,6 +174,20 @@ function get_classification_label(bn::BinaryNode)
     is_leaf(bn) || throw(ErrorException("Cannot get the classification label of node $(bn.idx), " * 
                         "since it is not a leaf node."))
     return bn.label
+end
+
+""" Returns the regression constant of a leaf BinaryNode. """
+function get_regression_constant(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get the regression constant of node $(bn.idx), since it is not a leaf node."))
+    bn.label isa Tuple || throw(ErrorException("Node $(nd.dx) has not been properly labeled. Are you sure that the MIO tree is a regression tree?"))
+    return bn.label[1]
+end
+
+""" Returns the regression weights of a leaf BinaryNode. """
+function get_regression_weights(bn::BinaryNode)
+    is_leaf(bn) || throw(ErrorException("Cannot get the regression weights of node $(bn.idx), since it is not a leaf node."))
+    bn.label isa Tuple || throw(ErrorException("Node $(nd.dx) has not been properly labeled. Are you sure that the MIO tree is a regression tree?"))
+    return bn.label[2]
 end
 
 """
@@ -176,4 +202,22 @@ function set_classification_label!(bn::BinaryNode, label)
     bn.a = nothing
     bn.b = nothing
     return
+end
+
+""" Returns left child of BinaryNode (less than side)."""
+function get_lower_child(bn::BinaryNode)
+    !is_leaf(bn) || throw(ErrorException("Cannot get lower child of leaf node $(bn.idx)."))
+    return bn.left
+end
+
+""" Returns right child of BinaryNode (greater than side)."""
+function get_upper_child(bn::BinaryNode)
+    !is_leaf(bn) || throw(ErrorException("Cannot get upper child of leaf node $(bn.idx)."))
+    return bn.right
+end
+
+""" Returns the parent of BinaryNode. """
+function get_parent(bn::BinaryNode)
+    !isnothing(bn.parent) || throw(ErrorException("BinaryNode $(bn.idx) has no parent."))
+    return bn.parent
 end
