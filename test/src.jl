@@ -213,7 +213,10 @@ function test_ensemblecls()
     X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
     te = TreeEnsemble(SOLVER_SILENT; max_depth = 3)
     plant_trees(te, 11)
-    fit!(te, "cart", X, Y)
+    for i = 1:length(te.trees)
+        idxs = wsample(1:length(Y), ones(length(Y)), length(Y))
+        fit!(te.trees[i], "cart", X[idxs, :], Y[idxs])
+    end
     @test all(check_if_trained.(te.trees))
     @test score(te, X, Y) >= 0.82
 end
@@ -241,29 +244,83 @@ function test_cluster_heuristic()
     end
     @test sample_proportion <= length(subset_idxs)/length(Y) <= 2*sample_proportion
 
-    mt = MIOTree(SOLVER_SILENT, max_depth = max_depth)
+    mt = MIOTree(Gurobi.Optimizer, max_depth = max_depth)
     generate_binary_tree(mt)
     generate_MIO_model(mt, X_norm[subset_idxs, :], Array(Y_norm .>= 0.3)[subset_idxs])
     optimize!(mt)
     populate_nodes!(mt)
     prune!(mt)
     @test score(mt, X_norm, Array(Y_norm .>= 0.3)) >= 0.8
+
+    # Warmstart and improve
+    clean_model!(mt)
+    generate_MIO_model(mt, X_norm, Array(Y_norm .>= 0.3))
+    warmstart(mt)
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+
+    mt = MIOTree(Gurobi.Optimizer, max_depth = 1)
+    generate_binary_tree(mt)
+    generate_MIO_model(mt, X_norm[subset_idxs, :], Y_norm[subset_idxs])
+    optimize!(mt)
+    populate_nodes!(mt)
+    prune!(mt)
+    @test score(mt, X_norm, Y_norm) >= 0.9
 end
 
-test_binarynode()
+# test_binarynode()
 
-test_data_processing()
+# test_data_processing()
 
-test_miotree()
+# test_miotree()
 
-test_hyperplanecart()
+# test_hyperplanecart()
 
-test_sequential()
+# test_sequential()
 
-test_regression()
+# test_regression()
 
-test_ensemblereg()
+# test_ensemblereg()
 
-test_ensemblecls()
+# test_ensemblecls()
 
-test_cluster_heuristic()
+# test_cluster_heuristic()
+
+# @info "Testing clustering heuristic in classification..."
+# Y = Array(transpose(MLDatasets.BostonHousing.targets()))
+# shuffle_idxs = shuffle(1:Int(length(Y)))
+# Y = Array(Y[shuffle_idxs])
+# X = Matrix(transpose(MLDatasets.BostonHousing.features()))[shuffle_idxs, :]
+
+# X_norm, X_bounds = normalize(X)
+# Y_norm, Y_bounds = normalize(Y)
+# dists = pairwise_distances(X_norm)
+# clust = hclust(dists)
+# max_depth = 5
+# n_clust = 2^(max_depth-1)
+# idxs = cutree(clust; k = n_clust, h = max_depth)
+# cluster_bins = Dict(i => [] for i in unique(idxs))
+# [push!(cluster_bins[idxs[i]], i) for i = 1:length(idxs)]
+
+# mt = MIOTree(Gurobi.Optimizer, max_depth = 2, minbucket = 1e-6)
+# fit!(mt, "mio", X_norm, idxs)
+
+# X_train = X_norm[1:253, :]
+# X_test = X_norm[254:506, :]
+# y_train = Y_norm[1:253]
+# y_test = Y_norm[254:506]
+
+# model = Chain(Dense(13, 10, relu), Dense(10, 1, relu))
+# using Flux: train!
+
+# n_epochs = 1000
+# loss(x,y) = Flux.Losses.mae(model(x), y)
+# ps = Flux.params(model)
+# data = [(transpose(X_train), y_train)]
+# opt = Descent(0.1)
+# for epoch in 1:n_epochs
+#     train!(loss, ps, data, opt)
+#     println(loss(transpose(X_test), y_test))
+# end
+

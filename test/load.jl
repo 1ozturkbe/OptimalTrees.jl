@@ -15,6 +15,6 @@ Random.seed!(1);
 include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees
-SOLVER_SILENT = with_optimizer(Gurobi.Optimizer, OutputFlag = 0, Gurobi.Env())
+SOLVER_SILENT = optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
 include("utilities.jl")
