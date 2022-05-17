@@ -65,7 +65,7 @@ function weigh_trees(te, X, Y)
     @constraint(m, preds .== evals * w)
     @objective(m, Min, 1/length(Y)*sum((Y .- preds).^2)) # Minimize squared error
     optimize!(m)
-    te.weights = getvalue.(w)
+    te.weights = value.(w)
     return
 end
 

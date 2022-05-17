@@ -3,7 +3,7 @@ Pkg.activate("test")
 
 using Clustering
 using DataFrames
-using Gurobi
+using GLPK
 using JuMP
 using CSV
 using MathOptInterface
@@ -15,6 +15,5 @@ Random.seed!(1);
 include("../src/OptimalTrees.jl")
 using .OptimalTrees
 global OT = OptimalTrees
-SOLVER_SILENT = with_optimizer(Gurobi.Optimizer, OutputFlag = 0, Gurobi.Env())
-
+const SOLVER_SILENT = GLPK.Optimizer
 include("utilities.jl")

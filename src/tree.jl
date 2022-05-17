@@ -205,22 +205,22 @@ function populate_nodes!(mt::MIOTree)
     m = mt.model
     for nd in allnodes(mt)
         if !is_leaf(nd)
-            aval = getvalue.(m[:a][nd.idx, :])
+            aval = value.(m[:a][nd.idx, :])
             if sum(isapprox.(aval, zeros(length(aval)); atol = 1e-10)) != length(aval)
                 nd.a = aval
-                nd.b = getvalue.(m[:b][nd.idx])
+                nd.b = value.(m[:b][nd.idx])
             end
         end
     end
     if get_param(mt, :regression)
         for lf in allleaves(mt)
-            regr_coeffs = getvalue.(m[:beta][lf.idx, :])
-            regr_const = getvalue(m[:beta0][lf.idx])
+            regr_coeffs = value.(m[:beta][lf.idx, :])
+            regr_const = value(m[:beta0][lf.idx])
             set_classification_label!(lf, (regr_const, regr_coeffs))
         end
     else
         for lf in allleaves(mt) # Then populate the class values...
-            class_values = [isapprox(getvalue.(m[:ckt][i, lf.idx]), 1; atol=1e-4) for i = 1:length(mt.classes)]
+            class_values = [isapprox(value.(m[:ckt][i, lf.idx]), 1; atol=1e-4) for i = 1:length(mt.classes)]
             if sum(class_values) == 1
                 set_classification_label!(lf, mt.classes[findall(class_values)[1]])
             elseif sum(class_values) > 1

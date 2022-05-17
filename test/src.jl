@@ -59,7 +59,7 @@ function test_miotree()
     @test !check_if_trained(mt) # Trees must be populated and pruned before they qualify!
 
     m = mt.model
-    as, d, Lt, ckt, Nkt = [getvalue.(m[i]) for i in [:a, :d, :Lt, :ckt, :Nkt]]; 
+    as, d, Lt, ckt, Nkt = [value.(m[i]) for i in [:a, :d, :Lt, :ckt, :Nkt]]; 
     populate_nodes!(mt)
     @test length(allleaves(mt)) == 2^md
     @test sum(!isnothing(node.a) for node in allnodes(mt)) == 2^md-1 - sum(all(isapprox.(as[i,:], 0, atol = 1e-10)) for i = 1:2^md-1)

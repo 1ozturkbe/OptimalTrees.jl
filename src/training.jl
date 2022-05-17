@@ -99,7 +99,9 @@ function generate_MIO_model(mt::MIOTree, X::Matrix, Y::Array)
             f[i] - (sum(beta[j,:] .* X[i,:]) + beta0[j]) <= M * (1 - z[i,j]))
 
         # Loss function
-        @constraint(mt.model, Lt .>= (f - Y).^2)
+        @constraint(mt.model, Lt .>= (f - Y))
+        @constraint(mt.model, Lt .>= -(f - Y))
+        
 
         # Additional split hierarchy constraint
         for nd in allleaves(mt)
@@ -158,9 +160,9 @@ end
 """ 
     SVM(X::Matrix, Y::Array, solver, C = 0.01)
 
-Optimizes an SVM, where C is the regularization factor. 
+Optimizes an SVM with L1 regularization, where C is the regularization factor. 
 """
-function SVM(X::Matrix, Y::Array, solver, C = 0.01)
+function SVM(X::Matrix, Y::Array, solver, C = 0.001)
     n_samples, n_vars = size(X)
     classes = sort(unique(Y)) # The potential classes are sorted. 
     k = length(classes)
@@ -170,13 +172,16 @@ function SVM(X::Matrix, Y::Array, solver, C = 0.01)
     Y_san[findall(Y .== classes[1])] .= -1
     m = JuMP.Model(solver)
     @variable(m, a[1:n_vars])
+    @variable(m, abs_a[1:n_vars])
     @variable(m, b)
     @variable(m, ζ[1:n_samples] ≥ 0) # variable allocation 
     @constraint(m, [i = 1:n_samples], Y_san[i] * (sum(a.*X[i, :]) - b) ≥ 1 - ζ[i])
+    @constraint(m, abs_a .>= a)
+    @constraint(m, abs_a .>= -a)
     C = 100
-    @objective(m, Min, 0.5*C*sum(a.^2) + sum(ζ))
+    @objective(m, Min, 0.5*C*sum(abs_a) + sum(ζ))
     optimize!(m)
-    return getvalue.(a), getvalue(b)
+    return value.(a), value(b)
 end 
 
 """
